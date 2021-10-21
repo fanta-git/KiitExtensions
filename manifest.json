@@ -1,0 +1,39 @@
+{
+    "name": "Kiite-Expantion",
+    "author": "fanta",
+    "description": "Kiite",
+    "version": "1.0.0",
+    "manifest_version": 2,
+    "permissions": [
+		"tabs",
+        "storage"
+    ],
+    "background":{
+        "scripts":[
+            "background.js"
+        ],
+        "persistent": false
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://kiite.jp/my/playlist/edit/*"],
+            "css": ["ListToCSV/style.css"],
+            "js" : ["lib/jquery-3.6.0.js", "ListToCSV/script.js"]
+        },
+        {
+            "matches": ["https://cafe.kiite.jp/*"],
+            "css": ["CafeExp/style.css"],
+            "js" : ["lib/jquery-3.6.0.js","CafeExp/script.js"]
+        },
+        {
+            "matches": ["https://kiite.jp/"],
+            "css": ["test/style.css"],
+            "js" : ["lib/jquery-3.6.0.js", "test/script.js"]
+        },
+        {
+            "matches": ["https://embed.nicovideo.jp/watch/*"],
+            "js" : ["lib/jquery-3.6.0.js", "CafeExp/iframe.js"],
+            "all_frames": true
+        }
+    ]
+}
