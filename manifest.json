@@ -26,13 +26,8 @@
             "js" : ["lib/jquery-3.6.0.js","CafeExp/script.js"]
         },
         {
-            "matches": ["https://kiite.jp/"],
-            "css": ["test/style.css"],
-            "js" : ["lib/jquery-3.6.0.js", "test/script.js"]
-        },
-        {
             "matches": ["https://embed.nicovideo.jp/watch/*"],
-            "js" : ["lib/jquery-3.6.0.js", "CafeExp/iframe.js"],
+            "js" : ["CafeExp/iframe.js"],
             "all_frames": true
         }
     ]

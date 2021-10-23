@@ -62,74 +62,39 @@ $(() => {
 			</div>
 		</div>
 	`);
-	if(0){
-		setTimeout(() => {
-			const comment_obs = new MutationObserver((mutationsList) => {
-				mutationsList.forEach(mutation => {
-					console.log(mutation.target);
-					if(mutation.target.innerText !== ''){
-						if(localStorage.ntc_flag === 'true' && !document.hasFocus()){
-							Notification.requestPermission();
-							var notification = new Notification(mutation.target.innerText,{ body : mutation.target.parentNode.querySelector('.user_nickname').innerText });
-						}
-						$('#timetable_list > ul > li:first-child > .comment_list').append(`
-							<div class="comment">
-								<div class="comment_icon" style='background-image: ${mutation.target.parentNode.querySelector('.thumbnail').style.backgroundImage}'></div>
-								<div class="comment_text">${mutation.target.innerText}</div>
-							</div>
-						`);
-						localStorage.timetable = document.querySelector('#timetable_list > ul').innerHTML.replace(/\t|\n/g, '');
-					}
-				});
-			});
+	
+	document.querySelector('#cafe').classList.add('view_reasons');
 
-			document.querySelectorAll('#cafe_space .comment').forEach((element) => {
-				comment_obs.observe(element, { childList: true });
-			});
-
-			const enter_obs = new MutationObserver((mutationsList) => {
-				setTimeout(() => {
-					mutationsList.forEach(mutation => {
-						if(mutation.addedNodes[0]){
-							const element = mutation.addedNodes[0].querySelector('.comment');
-							comment_obs.observe(element, { childList: true });
-						} 
-					});
-				}, 3000);
-			});
-
-			enter_obs.observe(document.querySelector('#cafe_space .users'), { childList: true });
-		}, 3000);
-	} else {
-		let obsData = {};
-		setInterval(() => {
-			document.querySelectorAll('#cafe_space .user').forEach((element) => {
-				const 
-					newData = element.querySelector('.comment').innerText,
-					userId = element.dataset.user_id;
-				if(newData && obsData[userId] !== newData){  //コメントを記録
-					//for(value of newData.filter(v => !~obsData[userId].indexOf(v))){
-					if(localStorage.ntc_flag === 'true' && !document.hasFocus()){
-						Notification.requestPermission();
-						var notification = new Notification(newData,{ body : element.querySelector('.user_nickname').innerText });
-					}
-					$('#timetable_list > ul > li:first-child > .comment_list').append(`
-						<div class="comment">
-							<div class="comment_icon" style='background-image: ${element.querySelector('.thumbnail').style.backgroundImage}'></div>
-							<div class="comment_text">${newData}</div>
-						</div>
-					`);
-					localStorage.timetable = document.querySelector('#timetable_list > ul').innerHTML.replace(/\t|\n/g, '');
+	let obsData = {};
+	setInterval(() => {
+		for(const element of document.querySelectorAll('#cafe_space .user')){
+			const 
+				newData = element.querySelector('.comment').innerText,
+				userId = element.dataset.user_id;
+			if(newData && obsData[userId] !== newData){  //コメントを記録
+				if(localStorage.ntc_flag === 'true' && !document.hasFocus()){
+					Notification.requestPermission();
+					var notification = new Notification(newData,{ body : element.querySelector('.user_nickname').innerText });
 				}
-				obsData[userId] = newData;
-			});
-		}, 1000);
-	}
+				$('#timetable_list > ul > li:first-child > .comment_list').append(`
+					<div class="comment">
+						<div class="comment_icon" style='background-image: ${element.querySelector('.thumbnail').style.backgroundImage}'></div>
+						<div class="comment_text">${newData}</div>
+					</div>
+				`);
+				localStorage.timetable = document.querySelector('#timetable_list > ul').innerHTML.replace(/\t|\n/g, '');
+			}
+			//for(value of newData.filter(v => !~obsData[userId].indexOf(v))){};
+			obsData[userId] = newData;
+		};
+	}, 1000);
 
-
+	const viewclass = Array.from(document.querySelectorAll('#cafe_menu > ul > li'), v => `view_${v.className}`);
 	for(const element of document.querySelectorAll('#cafe_menu > ul > li')){
 		$(document).on('click', `#cafe_menu > ul > li.${element.className}`, () => {
-			document.querySelector('#cafe').className = `special view_${element.className}`;
+			// document.querySelector('#cafe').className = `special view_${element.className}`;
+			document.querySelector('#cafe').classList.remove(...viewclass);
+			document.querySelector('#cafe').classList.add(`view_${element.className}`);
 		});
 	};
 });
@@ -138,12 +103,12 @@ $(document).on("click", "#rd_toggle", () => {
 	const element = document.querySelector('#rd_toggle .material-icons');
 	if(element.innerText === 'info'){
 		element.innerText = 'people';
-		document.querySelector('#reasons').style.display = 'none';
-		document.querySelector('#music_data').style.display = 'block';
+		document.querySelector('#cafe').classList.remove('view_reasons');
+		document.querySelector('#cafe').classList.add('view_music_data');
 	}else{
 		element.innerText = 'info';
-		document.querySelector('#music_data').style.display = 'none';
-		document.querySelector('#reasons').style.display = 'block';
+		document.querySelector('#cafe').classList.remove('view_music_data');
+		document.querySelector('#cafe').classList.add('view_reasons');
 	}
 });
 
@@ -156,9 +121,9 @@ $(document).on("click", "#ntc_toggle", () => {
 $(document).on("click", "#timetable_del", () => {
 	if(confirm('本当に再生履歴を全て削除しますか？')){
 		localStorage.timetable = '';
-		document.querySelectorAll('#timetable_list > ul > li').forEach((element) => {
+		for(const element of document.querySelectorAll('#timetable_list > ul > li')){
 			element.remove();
-		});	
+		};
 	}
 });
 
@@ -273,7 +238,7 @@ chrome.runtime.onMessage.addListener((request) => {
 				}else{
 					element.remove();
 				}
-			});			
+			});
 		}, 500);
 	}
 });

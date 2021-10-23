@@ -14,6 +14,10 @@
     margin-left: calc(100% - 100px);
 }
 
+#now_playing_info .inner .title {
+    padding-right: 90px;
+}
+
 #now_playing_info .inner i {
     font-size: 20px;
     color: #AAA;
@@ -25,12 +29,24 @@
 }
 
 /* 親要素のclassでどっちが表示されているかの判断をさせるよう変える */
-#music_data {
+#cafe #reasons {
+    display: none;
+}
+
+#cafe.view_reasons #reasons{
+    display: block;
+}
+
+#cafe #music_data {
     z-index: 10;
     grid-row: 2 / 4;
     grid-column: 3 / 5;
     position: relative;
 	display: none;
+}
+
+#cafe.view_music_data #music_data {
+    display: block;
 }
 
 #music_data .inner {
