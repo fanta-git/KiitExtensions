@@ -1,3 +1,31 @@
+let timetableItemTemplate = $(`
+	<li data-timestamp="">
+		<div class="bg_black"></div>
+		<div class="thumbnail" style=""></div>
+		<div class="music_info">
+			<div class="title_bar">
+				<span class="onair">ON AIR</span>
+				<span class="timestamp">--分前</span>
+				<span class="title"></span>
+			</div>
+			<span class="artist"></span>
+		</div>
+		<div class="comment_list"></div>
+		<div class="source">
+			<a href="" target="_brank"><i class="material-icons">open_in_new</i></a>		
+		</div>
+	</li>
+`).get(0);
+
+let timetableCommentTemplate = $(`
+	<div class="comment">
+		<div class="comment_icon" style=""></div>
+		<div class="comment_text"></div>
+	</div>
+`).get(0);
+
+let timetableDic = JSON.parse(localStorage.timetable || '[]');
+
 $(() => {
 	$('#now_playing_info .inner .source').after(`
 		<div class="rd_toggle" id="rd_toggle">
@@ -55,44 +83,45 @@ $(() => {
 					<div id="timetable_del">履歴を全て削除</div>
 				</div>
 				<div id="timetable_list">
-					<ul>
-						${localStorage.timetable || ''}
-					</ul>
 				</div>
 			</div>
 		</div>
 	`);
+
+	const timetableListNode = $('<ul></ul>').get(0);
+	for(const element of timetableDic){
+		timetableListNode.append(timetableItemCreate(element));
+	}
+	$('#timetable_list').append($(timetableListNode));
 	
 	document.querySelector('#cafe').classList.add('view_reasons');
 
 	let obsData = {};
 	setInterval(() => {
 		for(const element of document.querySelectorAll('#cafe_space .user')){
-			const 
-				newData = element.querySelector('.comment').innerText,
-				userId = element.dataset.user_id;
-			if(newData && obsData[userId] !== newData){  //コメントを記録
+			const commentData = {
+				iconName: element.querySelector('.thumbnail').style.backgroundImage.split('"')[1].split('/')[4],
+				text: element.querySelector('.comment').textContent,
+				userId: element.dataset.user_id,
+				userName: element.querySelector('.user_nickname').textContent
+			};
+			if(!!commentData.text && obsData[commentData.userId] !== commentData.text){  //コメントを記録
 				if(localStorage.ntc_flag === 'true' && !document.hasFocus()){
 					Notification.requestPermission();
-					var notification = new Notification(newData,{ body : element.querySelector('.user_nickname').innerText });
+					var notification = new Notification(commentData.text,{ body : commentData.userName });
 				}
-				$('#timetable_list > ul > li:first-child > .comment_list').append(`
-					<div class="comment">
-						<div class="comment_icon" style='background-image: ${element.querySelector('.thumbnail').style.backgroundImage}'></div>
-						<div class="comment_text">${newData}</div>
-					</div>
-				`);
-				localStorage.timetable = document.querySelector('#timetable_list > ul').innerHTML.replace(/\t|\n/g, '');
+				$('#timetable_list > ul > li:first-child > .comment_list').append($(timetableCommentCreate(commentData)));
+				timetableDic[0].commentList.push(commentData);
+				localStorage.timetable = JSON.stringify(timetableDic);
 			}
-			//for(value of newData.filter(v => !~obsData[userId].indexOf(v))){};
-			obsData[userId] = newData;
+			//for(value of commentData.text.filter(v => !~obsData[commentData.userId].indexOf(v))){};
+			obsData[commentData.userId] = commentData.text;
 		};
 	}, 1000);
 
 	const viewclass = Array.from(document.querySelectorAll('#cafe_menu > ul > li'), v => `view_${v.className}`);
 	for(const element of document.querySelectorAll('#cafe_menu > ul > li')){
 		$(document).on('click', `#cafe_menu > ul > li.${element.className}`, () => {
-			// document.querySelector('#cafe').className = `special view_${element.className}`;
 			document.querySelector('#cafe').classList.remove(...viewclass);
 			document.querySelector('#cafe').classList.add(`view_${element.className}`);
 		});
@@ -120,7 +149,8 @@ $(document).on("click", "#ntc_toggle", () => {
 
 $(document).on("click", "#timetable_del", () => {
 	if(confirm('本当に再生履歴を全て削除しますか？')){
-		localStorage.timetable = '';
+		localStorage.timetable = '[]';
+		timetableDic = [];
 		for(const element of document.querySelectorAll('#timetable_list > ul > li')){
 			element.remove();
 		};
@@ -179,7 +209,7 @@ chrome.runtime.onMessage.addListener((request) => {
 			//timestamp_time       || <--\\---->|               +            +
 			//localStorage.endtime || <--//-----+---------------+----------->|(処理の最後に代入するので基本的には一つ前の曲からとった数字を扱う)
 
-			if(localStorage.endtime){
+			if(!!localStorage.endtime){
 				console.log(localStorage.endtime + 0, timestamp_time.getTime(), timestamp_time.getTime() - localStorage.endtime);
 				if(parseInt(localStorage.endtime) + 10000 < timestamp_time.getTime()){
 					$('#timetable_list > ul').prepend(`
@@ -189,41 +219,38 @@ chrome.runtime.onMessage.addListener((request) => {
 							</div>
 						</li>
 					`);
+					timetableDic.unshift({blank: true});
 				}
 			}
 
 			const lasttitle = document.querySelector('#timetable_list .title');
-			if(lasttitle === null || lasttitle.innerText !== music_data.title){
-				$('#timetable_list > ul').prepend(`
-					<li data-timestamp="${timestamp_time.getTime()}">
-						<div class="bg_black"></div>
-						<div class="thumbnail" style="background-image: url(&quot;${music_data.thumbnailUrl}&quot;);"></div>
-						<div class="music_info">
-							<div class="title_bar">
-								<span class="onair">ON AIR</span>
-								<span class="timestamp">--分前</span>
-								<span class="title">${music_data.title}</span>
-							</div>
-							<span class="artist">${document.querySelector('#now_playing_info .artist span').innerText}</span>
-						</div>
-						<div class="source">
-							<a href="https://kiite.jp/search/song?keyword=${music_data.videoId}" target="_brank"><i class="material-icons">open_in_new</i></a>		
-						</div>
-						<div class="comment_list"></div>
-					</li>
-				`);
+			if(!lasttitle || lasttitle.innerText !== music_data.title){
+				timetableDic.unshift({
+					"timestamp": timestamp_time.getTime(),
+					"thumbnailId": music_data.thumbnailUrl.split('/')[5],
+					"title": music_data.title,
+					"artist": document.querySelector('#now_playing_info .artist span').textContent,
+					"videoId": music_data.videoId,
+					"commentList": []
+				});
+				if(100 < timetableDic.length){
+					timetableDic.splice(100, timetableDic.length - 100);
+				}
+
+				$('#timetable_list > ul').prepend($(timetableItemCreate(timetableDic[0])));
 
 				if(localStorage.ntc_flag === 'true' && !document.hasFocus()){
 					Notification.requestPermission();
 					var notification = new Notification(music_data.title);
 				}
-				localStorage.timetable = document.querySelector('#timetable_list > ul').innerHTML.replace(/\t|\n/g, '');
+
+				localStorage.timetable = JSON.stringify(timetableDic);
 				localStorage.endtime = (timestamp_time.getTime() + (music_data.lengthInSeconds * 1000)) + '';
 			}
 			
 			document.querySelectorAll('#timetable_list > ul > li').forEach((element, index) => {
 				if(index < 100){
-					if(element.querySelectorAll('.timestamp').length){
+					if(!!element.querySelectorAll('.timestamp').length){
 						element.querySelector('.timestamp').innerText = ((lag_ms) => {
 							const lag_s = parseInt(lag_ms / 1000);
 							if(lag_s < 3600){
@@ -242,6 +269,26 @@ chrome.runtime.onMessage.addListener((request) => {
 		}, 500);
 	}
 });
+
+function timetableItemCreate(itemData){
+	let newNode = timetableItemTemplate.cloneNode(true);
+	newNode.dataset.timestamp = itemData.timestamp;
+	newNode.querySelector('.thumbnail').style.backgroundImage = `url('https://nicovideo.cdn.nimg.jp/thumbnails/${itemData.thumbnailId.split('.')[0]}/${itemData.thumbnailId}')`;
+	newNode.querySelector('.title').textContent = itemData.title;
+	newNode.querySelector('.artist').textContent = itemData.artist;
+	newNode.querySelector('.source > a').href = `https://kiite.jp/search/song?keyword=${itemData.videoId}`;
+	for(const element of itemData.commentList){
+		newNode.querySelector('.comment_list').appendChild(timetableCommentCreate(element));
+	}
+	return newNode;
+}
+
+function timetableCommentCreate(itemData){
+	let newNode = timetableCommentTemplate.cloneNode(true);
+	newNode.querySelector('.comment_icon').style.backgroundImage = `url('https://d7209z8dzwjpy.cloudfront.net/avatar/${itemData.iconName}')`;
+	newNode.querySelector('.comment_text').textContent = itemData.text;
+	return newNode;
+}
 
 function changeColor(textRGB, thr = 7) {  //ニコニコは白背景、Kiiteは黒背景で文字色そのままに動画説明文を載せると読みにくいためそれを直す
 	let {r, g, b} = textRGB;
