@@ -28,7 +28,6 @@
     color: #FFF;
 }
 
-/* 親要素のclassでどっちが表示されているかの判断をさせるよう変える */
 #cafe #reasons {
     display: none;
 }
@@ -277,7 +276,8 @@
 .comment_icon {
     height: 34px;
     width: 34px;
-    background-size: 100%;
+    background-size: cover;
+    background-position: center center;
     border-radius: 50%;
 }
 

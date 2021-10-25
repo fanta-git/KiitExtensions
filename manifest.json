@@ -18,7 +18,7 @@
         {
             "matches": ["https://kiite.jp/my/playlist/edit/*"],
             "css": ["ListToCSV/style.css"],
-            "js" : ["https://code.jquery.com/jquery-3.6.0.min.js", "ListToCSV/script.js"]
+            "js" : ["lib/jquery-3.6.0.js", "ListToCSV/script.js"]
         },
         {
             "matches": ["https://cafe.kiite.jp/*"],
