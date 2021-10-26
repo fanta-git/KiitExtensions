@@ -103,34 +103,56 @@ $(() => {
 	for(const element of timetableDic){
 		timetableListNode.appendChild(timetableItemCreate(element));
 	}
-	document.querySelector('#timetable_list > ul').appendChild(timetableListNode);
+	if(!!timetableListNode){
+		document.querySelector('#timetable_list > ul').appendChild(timetableListNode);
+	}
 	
 	const qsCafe = document.querySelector('#cafe');
 	qsCafe.classList.add('view_reasons');
 
-	let obsData = {};
-	setInterval(() => {
-		for(const element of document.querySelectorAll('#cafe_space .user')){
-			const commentData = {
-				iconName: element.querySelector('.thumbnail').style.backgroundImage.split('"')[1].split('/')[4],
-				text: element.querySelector('.comment').textContent,
-				userId: element.dataset.user_id,
-				userName: element.querySelector('.user_nickname').textContent
-			};
-			if(obsData[commentData.Id] !== null && !!commentData.text && obsData[commentData.userId] !== commentData.text){
-				if(localStorage.ntc_flag === 'true' && !document.hasFocus()){
-					Notification.requestPermission().then(permission => {
-						new Notification(commentData.text,{ body : commentData.userName });
-					});
+	setTimeout(() => {
+		let obsComment = {};
+		setInterval(() => {
+			const qsaUser = document.querySelectorAll('#cafe_space .user');
+			let newData = {};
+			qsaUser.forEach(e => {
+				e.classList.forEach(v => {
+					newData[v] = (newData[v] || 0) + 1;
+				});
+			});
+			for(const element of qsaUser){
+				const commentData = {
+					iconName: element.querySelector('.thumbnail').style.backgroundImage.split('"')[1].split('/')[4],
+					text: element.querySelector('.comment').textContent,
+					userId: element.dataset.user_id,
+					userName: element.querySelector('.user_nickname').textContent
+				};
+				if(obsComment[commentData.userId] !== undefined && !!commentData.text && obsComment[commentData.userId] !== commentData.text){
+					if(localStorage.ntc_flag === 'true' && !document.hasFocus()){
+						Notification.requestPermission().then(permission => {
+							new Notification(commentData.text,{ body : commentData.userName });
+						});
+					}
+					$('#timetable_list > ul > li:first-child > .comment_list').append($(timetableCommentCreate(commentData)));
+					timetableDic[0].commentList.push(commentData);
+					localStorage.timetable = JSON.stringify(timetableDic);
 				}
-				$('#timetable_list > ul > li:first-child > .comment_list').append($(timetableCommentCreate(commentData)));
-				timetableDic[0].commentList.push(commentData);
-				localStorage.timetable = JSON.stringify(timetableDic);
+				obsComment[commentData.userId] = commentData.text;
 			}
-			//for(value of commentData.text.filter(v => !~obsData[commentData.userId].indexOf(v))){};
-			obsData[commentData.userId] = commentData.text;
-		};
-	}, 1000);
+			if(newData.gesture_rotate && timetableDic[0].gesture_rotate < newData.gesture_rotate){
+				timetableDic[0].gesture_rotate = newData.gesture_rotate;
+				//DOMの書き換え
+				
+				console.log('gesture_rotate:', newData.gesture_rotate || 0);
+			}
+			if(newData.new_fav && timetableDic[0].new_fav < newData.new_fav){
+				timetableDic[0].new_fav = newData.new_fav;
+				//DOMの書き換え
+				console.log('new_fav:', newData.new_fav || 0);
+			}
+		}, 1000);
+	},3000);
+
 
 	const qsaMenuLi = document.querySelectorAll('#cafe_menu > ul > li'),
 		viewclass = Array.from(qsaMenuLi, v => `view_${v.dataset.val}`);
@@ -159,13 +181,14 @@ $(document).on("click", "#rd_toggle", () => {
 
 $(document).on("click", "#ntc_toggle", () => {
 	Notification.requestPermission();
-	localStorage.ntc_flag = localStorage.ntc_flag === 'true' ? 'false' : 'true';
+	localStorage.ntc_flag = (localStorage.ntc_flag === 'true' ? 'false' : 'true');
 	document.querySelector('#ntc_toggle .material-icons').innerText = (localStorage.ntc_flag === 'true'? 'notifications_active' : 'notifications_off');
 });
 
 $(document).on("click", "#timetable_del", () => {
 	if(confirm('本当に再生履歴を全て削除しますか？')){
 		localStorage.timetable = '[]';
+		localStorage.endtime = '';
 		timetableDic = [];
 		for(const element of document.querySelectorAll('#timetable_list > ul > li')){
 			element.remove();
@@ -234,13 +257,15 @@ chrome.runtime.onMessage.addListener((request) => {
 
 			if(!timetableDic[0] || timetableDic[0].title !== music_data.title){
 				timetableDic.unshift({
-					"timestamp": timestamp_time.getTime(),
-					"thumbnailId": music_data.thumbnailUrl.split('/')[5],
-					"title": music_data.title,
-					"artist": document.querySelector('#now_playing_info .artist span').textContent,
-					"videoId": music_data.videoId,
-					"commentList": [],
-					"brank": !!localStorage.endtime && parseInt(localStorage.endtime) + 10000 < timestamp_time.getTime()
+					timestamp: timestamp_time.getTime(),
+					thumbnailId: music_data.thumbnailUrl.split('/')[5],
+					title: music_data.title,
+					artist: document.querySelector('#now_playing_info .artist span').textContent,
+					videoId: music_data.videoId,
+					commentList: [],
+					gesture_rotate: 0,
+					new_fav: 0,
+					brank: !!localStorage.endtime && parseInt(localStorage.endtime) + 10000 < timestamp_time.getTime()
 				});
 				if(100 < timetableDic.length){
 					timetableDic.splice(100, timetableDic.length - 100);

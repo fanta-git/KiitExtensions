@@ -15,7 +15,7 @@
 }
 
 #now_playing_info .inner .title {
-    padding-right: 90px;
+    padding-right: 90px!important;
 }
 
 #now_playing_info .inner i {
@@ -50,7 +50,7 @@
 
 #music_data .inner {
     height: 100%;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.5);
     margin: 0px 10px 0px 5px;
 }
 
@@ -285,7 +285,8 @@
     display: block;
     border-radius: .3em .3em .3em .3em;
     font-size: 1.1em;
-    background: lightcyan;
+    background: #fffacd;
+    border: 1px rgba(0,0,0,0.1) solid;
     padding: 8px;
     color: black;
     line-height: 1.4em;
@@ -322,9 +323,9 @@
 }
 
 @media screen and (max-width: 900px){
-    #music_data {
-        grid-row: 4/5;
-        grid-column: 2/3;
+    #cafe.view_music_data #music_data {
+        grid-row: 4 / 5;
+        grid-column: 2 / 3;
     }
     
     #music_data .inner {
@@ -347,7 +348,6 @@
         grid-column: 2/3;
         height: 100%;
     }
-
 
     #cafe.view_timetable #cafe_space {
         z-index: 0;
