@@ -170,84 +170,126 @@
 
 #timetable_list li {
     display: grid;
-    grid-template-columns: 60px 1fr 40px;
-    grid-template-rows: 60px 1fr;
+    grid-template-columns: 60px auto 40px;
+    grid-template-rows: 60px auto 1fr 10px;
+    column-gap: 5px;
+    grid-template-areas: 
+        "thum info sour" 
+        ".    info sour"
+        ".    comm comm" 
+        ".    foot foot" ;
     position: relative;
     margin: 4px 0 4px;
 }
 
-.bg_black {
-    grid-column: 2 / 4;
-    grid-row: 1 / 3;
-    margin-left: 5px;
+#timetable_list * {
+    z-index: 1;
+}
+
+#timetable_list .bg_black {
+    grid-column: 2 / -1;
+    grid-row: 1 / -1;
     z-index: 0;
     background-color: rgba(0, 0, 0, 0.8);
 }
 
 #timetable_list .thumbnail {
-    grid-row: 1 / 2;
-    grid-column: 1 / 2;
+    grid-area: thum;
     background-position: center center;
     background-size: 180%;
     border-radius: 20%;
 }
 
 #timetable_list .music_info {
-    position: relative;
-    margin-left: 5px;
-    grid-row: 1 / 2;
-    grid-column: 2 / 3;
+    display: grid;
+    grid-area: info;
+    padding: 10px 15px 0px;
+    grid-template-columns: 58px 1fr 60px 60px;
+    grid-template-rows: 18px 18px 18px;
+    row-gap: 3px;
+    grid-template-areas: 
+        "time reas reas reas"
+        "titl titl titl titl"
+        "arti arti rota fave";
 }
 
-#timetable .title_bar {
-    display: block;
-    line-height: 1.3em;
-    padding-top: 10px;
-    padding-left: 15px;
-}
-
-#timetable .onair, #timetable .timestamp {
-    padding: 2px 0px 1px 0px;
+#timetable_list .onair, #timetable_list .timestamp {
+    grid-area: time;
+    padding: 0;
+    height: 100%;
+    width: 100%;
     color: #FFF;
-    width: 60px;
-    text-align: center;
+    align-items: center;
+    justify-content: center;
 }
 
-#timetable li:first-child .onair {
-    display: inline-block;
+#timetable_list li:first-child .onair {
+    display: flex;
 }
 
-#timetable .onair {
+#timetable_list .onair {
     background: red;
     display: none;
 }
 
-#timetable li:first-child .timestamp {
+#timetable_list li:first-child .timestamp {
     display: none;
 }
 
-#timetable .timestamp {
+#timetable_list .timestamp {
     background: #666;
-    display: inline-block;
+    display: flex;
 }
 
 #timetable_list .title{
-    display: inline;
-    margin-left: 10px;
+    display: flex;
+    grid-area: titl;
+    align-items: center;
     font-size: 1.2em;
 }
 
-#timetable .artist {
-    position: absolute;
-    display: block;
-    left: 15px;
-    bottom: 10px;
+#timetable_list .artist {
+    display: flex;
+    grid-area: arti;
     color: #AAA;
+    align-items: center;
 }
 
-#timetable .source {
-    grid-row: 1 / 1;
-    grid-column: 3 / 4;
+#timetable_list .rotate, #timetable_list .new_fav {
+    display: none;
+}
+
+#timetable_list .rotate{
+    grid-area: rota;
+}
+
+#timetable_list .new_fav {
+    grid-area: fave;
+}
+
+#timetable_list .rotate.show, #timetable_list .new_fav.show{
+    display: inline;
+}
+
+#timetable_list .rotate b{
+    color: #ffef00;
+}
+
+#timetable_list .new_fav_icon i{
+    position: absolute;
+    color: #ff33aa;
+}
+
+#timetable_list i.in{
+    transform: scale(.5);
+}
+
+#timetable_list i.out{
+    opacity: .5;
+}
+
+#timetable_list .source {
+    grid-area: sour;
     margin: auto;
     z-index: 1;
 }
@@ -262,15 +304,17 @@
 }
 
 #timetable_list .comment_list{
-    margin-left: 5px;
-    grid-row: 2 / 3;
-    grid-column: 2 / 4;
+    display: flex;
+    flex-direction: column;
+    row-gap: 5px;
+    grid-area: comm;
     z-index: 1;
+    padding: 3px 15px 0px;
 }
 
 #timetable_list .comment {
     display: flex;
-    padding: 0px 10px 8px;
+    column-gap: 5px;
 }
 
 .comment_icon {
@@ -283,15 +327,18 @@
 
 .comment_text {
     display: block;
-    border-radius: .3em .3em .3em .3em;
+    width: 100%;
+    border-radius: .3em;
+    border: 1px rgba(0, 0, 0, 0.1) solid;
     font-size: 1.1em;
     background: #fffacd;
-    border: 1px rgba(0,0,0,0.1) solid;
     padding: 8px;
     color: black;
     line-height: 1.4em;
-    width: 100%;
-    margin-left: 8px;
+}
+
+#timetable_list .footer{
+    grid-area: foot;
 }
 
 .timetable_brank {

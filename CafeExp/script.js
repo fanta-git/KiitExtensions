@@ -5,14 +5,24 @@ const timetableItemTemplate = $(`
 		<div class="bg_black"></div>
 		<div class="thumbnail" style=""></div>
 		<div class="music_info">
-			<div class="title_bar">
-				<span class="onair">ON AIR</span>
-				<span class="timestamp">--分前</span>
-				<span class="title"></span>
+			<div class="onair">ON AIR</div>
+			<div class="timestamp">--分前</div>
+			<div class="title"></div>
+			<div class="artist"></div>
+			<div class="rotate">
+				<b>回</b>
+				<span class="count"></span>
 			</div>
-			<span class="artist"></span>
+			<div class="new_fav">
+				<span class="new_fav_icon">
+					<i class="material-icons in">favorite</i>
+					<i class="material-icons out">favorite</i>
+				</span>
+				<span class="count"></span>
+			</div>
 		</div>
 		<div class="comment_list"></div>
+		<div class="footer"></div>
 		<div class="source">
 			<a href="" target="_brank"><i class="material-icons">open_in_new</i></a>		
 		</div>
@@ -210,10 +220,8 @@ chrome.runtime.onMessage.addListener((request) => {
 				.replace(/(?<!(https?:\/\/[\w!?/+\-~=;.,*&@#$%()'[\]]+|@\w+))(sm|nm)\d+/g, '<a href="https://www.nicovideo.jp/watch/$&" target="_blank">$&</a>')
 				.replace(/(?<!(https?:\/\/[\w!?/+\-~=;.,*&@#$%()'[\]]+|\w+))@(\w+)/g, '<a href="https://twitter.com/$1" target="_blank">$&</a>')
 				.replace(/#[0-9a-fA-F]{6}/g, ((match) => {
-					let r, g, b;
-					[r, g, b] = [parseInt(match.substr(1, 2), 16), parseInt(match.substr(3, 2), 16), parseInt(match.substr(5, 2), 16)];
+					let [r, g, b] = [parseInt(match.substr(1, 2), 16), parseInt(match.substr(3, 2), 16), parseInt(match.substr(5, 2), 16)];
 					const thr = 6;
-
 					const blightRatio = (_r, _g, _b) => {
 						[_r, _g, _b] = [Math.min(_r / 255, 1), Math.min(_g / 255, 1), Math.min(_b / 255, 1)];
 
@@ -229,10 +237,7 @@ chrome.runtime.onMessage.addListener((request) => {
 						[r, g, b] = [255 - r, 255 - g, 255 - b];
 					}else if(blightRatio(r, g, b) < thr){
 						[r, g, b] = [r || 1, g || 1, b || 1];
-
-						let top = 255 / Math.min(r, g, b), 
-							bottom = 1,
-							mag = (top + bottom)/ 2;
+						let top = 255 / Math.min(r, g, b), bottom = 1,mag = (top + bottom)/ 2;
 
 						for(let i = 0; i < 8; i++){
 							if(blightRatio(r * mag, g * mag, b * mag) < thr){
@@ -313,6 +318,14 @@ function timetableItemCreate(itemData){
 	newNode.querySelector('.title').textContent = itemData.title;
 	newNode.querySelector('.artist').textContent = itemData.artist;
 	newNode.querySelector('.source > a').href = `https://kiite.jp/search/song?keyword=${itemData.videoId}`;
+	if(!!itemData.gesture_rotate){
+		newNode.querySelector('.rotate').classList.add('show');
+		newNode.querySelector('.rotate > .count').textContent = itemData.gesture_rotate;
+	}
+	if(!!itemData.new_fav){
+		newNode.querySelector('.new_fav').classList.add('show');
+		newNode.querySelector('.new_fav > .count').textContent = itemData.new_fav;
+	}
 	for(const element of itemData.commentList){
 		newNode.querySelector('.comment_list').appendChild(timetableCommentCreate(element));
 	}
@@ -324,7 +337,13 @@ function timetableItemCreate(itemData){
 
 function timetableCommentCreate(itemData){
 	let newNode = timetableCommentTemplate.cloneNode(true);
-	newNode.querySelector('.comment_icon').style.backgroundImage = `url('https://d7209z8dzwjpy.cloudfront.net/avatar/${itemData.iconName}')`;
+	let imgUrl;
+	if(itemData.iconName === 'icon-user.jpg'){
+		imgUrl = 'https://kiite.jp/img/icon-user.jpg';
+	}else{
+		imgUrl = `https://d7209z8dzwjpy.cloudfront.net/avatar/${itemData.iconName}`;
+	}
+	newNode.querySelector('.comment_icon').style.backgroundImage = `url('${imgUrl}')`;
 	newNode.querySelector('.comment_text').textContent = itemData.text;
 	return newNode;
 }
