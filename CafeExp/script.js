@@ -9,23 +9,23 @@ const timetableItemTemplate = $(`
 			<div class="timestamp">--分前</div>
 			<div class="title"></div>
 			<div class="artist"></div>
-			<div class="rotate">
+			<div class="rotate invisible">
 				<b>回</b>
 				<span class="count"></span>
 			</div>
-			<div class="new_fav">
+			<div class="new_fav invisible">
 				<span class="new_fav_icon">
 					<i class="material-icons in">favorite</i>
 					<i class="material-icons out">favorite</i>
 				</span>
 				<span class="count"></span>
 			</div>
+			<div class="source">
+				<a href="" target="_brank"><i class="material-icons">open_in_new</i></a>		
+			</div>
 		</div>
-		<div class="comment_list"></div>
-		<div class="footer"></div>
-		<div class="source">
-			<a href="" target="_brank"><i class="material-icons">open_in_new</i></a>		
-		</div>
+		<div class="comment_list empty folded"></div>
+		<div class="comment_tail"></div>
 	</li>
 `).get(0);
 
@@ -46,7 +46,7 @@ const timetableBrankTemplate = $(`
 
 let timetableDic = JSON.parse(localStorage.timetable || '[]');
 
-$(() => {
+window.onload = () => {
 	$('#now_playing_info .inner .source').after(`
 		<div class="rd_toggle" id="rd_toggle">
 			<i class="material-icons">info</i>
@@ -108,22 +108,63 @@ $(() => {
 			</div>
 		</div>
 	`);
+	
+	const qsCafe = document.querySelector('#cafe'),
+		qsaMenuLi = document.querySelectorAll('#cafe_menu > ul > li'),
+		viewclass = Array.from(qsaMenuLi, v => `view_${v.dataset.val}`),
+		qsRdIcon = document.querySelector('#rd_toggle .material-icons');
+	
+	qsCafe.classList.add('view_reasons');
+
+	document.querySelector('#rd_toggle').onclick = () => {
+		if(qsRdIcon.innerText === 'info'){
+			qsRdIcon.innerText = 'people';
+			qsCafe.classList.remove('view_reasons');
+			qsCafe.classList.add('view_music_data');
+		}else{
+			qsRdIcon.innerText = 'info';
+			qsCafe.classList.remove('view_music_data');
+			qsCafe.classList.add('view_reasons');
+		}
+	};
+
+	document.querySelector('#ntc_toggle').onclick = () => {
+		Notification.requestPermission();
+		localStorage.ntc_flag = (localStorage.ntc_flag === 'true' ? 'false' : 'true');
+		document.querySelector('#ntc_toggle .material-icons').innerText = (localStorage.ntc_flag === 'true'? 'notifications_active' : 'notifications_off');
+	};
+
+	for(const element of qsaMenuLi){
+		document.querySelector(`#cafe_menu > ul > li.${element.dataset.val}`).onclick = () => {
+			qsCafe.classList.remove(...viewclass);
+			qsCafe.classList.add(`view_${element.dataset.val}`);
+		};
+	};
+
+	document.querySelector('#timetable_del').onclick = () => {
+		if(confirm('本当に再生履歴を全て削除しますか？')){
+			localStorage.timetable = '[]';
+			localStorage.endtime = '';
+			timetableDic = [];
+			for(const element of document.querySelectorAll('#timetable_list > ul > li')){
+				element.remove();
+			};
+		}
+	};
 
 	let timetableListNode = document.createDocumentFragment();
 	for(const element of timetableDic){
-		timetableListNode.appendChild(timetableItemCreate(element));
+		timetableListNode.append(timetableItemCreate(element));
 	}
 	if(!!timetableListNode){
-		document.querySelector('#timetable_list > ul').appendChild(timetableListNode);
+		document.querySelector('#timetable_list > ul').append(timetableListNode);
 	}
-	
-	const qsCafe = document.querySelector('#cafe');
-	qsCafe.classList.add('view_reasons');
 
 	setTimeout(() => {
 		let obsComment = {};
 		setInterval(() => {
-			const qsaUser = document.querySelectorAll('#cafe_space .user');
+			const qsaUser = document.querySelectorAll('#cafe_space .user'),
+				qsTimetableFirst = document.querySelector('#timetable_list > ul > li:first-child');
 			let newData = {};
 			qsaUser.forEach(e => {
 				e.classList.forEach(v => {
@@ -139,72 +180,34 @@ $(() => {
 				};
 				if(obsComment[commentData.userId] !== undefined && !!commentData.text && obsComment[commentData.userId] !== commentData.text){
 					if(localStorage.ntc_flag === 'true' && !document.hasFocus()){
-						Notification.requestPermission().then(permission => {
+						Notification.requestPermission().then(() => {
 							new Notification(commentData.text,{ body : commentData.userName });
 						});
 					}
-					$('#timetable_list > ul > li:first-child > .comment_list').append($(timetableCommentCreate(commentData)));
+					qsTimetableFirst.querySelector('.comment_list').append(timetableCommentCreate(commentData));
+					qsTimetableFirst.querySelector('.comment_list').classList.remove('empty');
 					timetableDic[0].commentList.push(commentData);
 					localStorage.timetable = JSON.stringify(timetableDic);
 				}
 				obsComment[commentData.userId] = commentData.text;
 			}
-			if(newData.gesture_rotate && timetableDic[0].gesture_rotate < newData.gesture_rotate){
+			if(!!newData.gesture_rotate && timetableDic[0].gesture_rotate < newData.gesture_rotate){
+				if(!timetableDic[0].gesture_rotate){
+					qsTimetableFirst.querySelector('.rotate').classList.remove('invisible');
+				}
+				qsTimetableFirst.querySelector('.rotate > .count').textContent = newData.gesture_rotate;
 				timetableDic[0].gesture_rotate = newData.gesture_rotate;
-				//DOMの書き換え
-				
-				console.log('gesture_rotate:', newData.gesture_rotate || 0);
 			}
-			if(newData.new_fav && timetableDic[0].new_fav < newData.new_fav){
+			if(!!newData.new_fav && timetableDic[0].new_fav < newData.new_fav){
+				if(!timetableDic[0].new_fav){
+					qsTimetableFirst.querySelector('.new_fav').classList.remove('invisible');
+				}
+				qsTimetableFirst.querySelector('.new_fav > .count').textContent = newData.new_fav;
 				timetableDic[0].new_fav = newData.new_fav;
-				//DOMの書き換え
-				console.log('new_fav:', newData.new_fav || 0);
 			}
 		}, 1000);
 	},3000);
-
-
-	const qsaMenuLi = document.querySelectorAll('#cafe_menu > ul > li'),
-		viewclass = Array.from(qsaMenuLi, v => `view_${v.dataset.val}`);
-	for(const element of qsaMenuLi){
-		$(document).on('click', `#cafe_menu > ul > li.${element.dataset.val}`, () => {
-			qsCafe.classList.remove(...viewclass);
-			qsCafe.classList.add(`view_${element.dataset.val}`);
-		});
-	};
-});
-
-$(document).on("click", "#rd_toggle", () => {
-	const qsRdIcon = document.querySelector('#rd_toggle .material-icons'),
-		qsCafe = document.querySelector('#cafe');
-	
-	if(qsRdIcon.innerText === 'info'){
-		qsRdIcon.innerText = 'people';
-		qsCafe.classList.remove('view_reasons');
-		qsCafe.classList.add('view_music_data');
-	}else{
-		qsRdIcon.innerText = 'info';
-		qsCafe.classList.remove('view_music_data');
-		qsCafe.classList.add('view_reasons');
-	}
-});
-
-$(document).on("click", "#ntc_toggle", () => {
-	Notification.requestPermission();
-	localStorage.ntc_flag = (localStorage.ntc_flag === 'true' ? 'false' : 'true');
-	document.querySelector('#ntc_toggle .material-icons').innerText = (localStorage.ntc_flag === 'true'? 'notifications_active' : 'notifications_off');
-});
-
-$(document).on("click", "#timetable_del", () => {
-	if(confirm('本当に再生履歴を全て削除しますか？')){
-		localStorage.timetable = '[]';
-		localStorage.endtime = '';
-		timetableDic = [];
-		for(const element of document.querySelectorAll('#timetable_list > ul > li')){
-			element.remove();
-		};
-	}
-});
+};
 
 chrome.runtime.onMessage.addListener((request) => {
 	if(request.type === 'music_data'){
@@ -260,6 +263,8 @@ chrome.runtime.onMessage.addListener((request) => {
 				song_position = new Date((1 - parseFloat(document.querySelector('#song_position .position').style.width.slice(0, -1))/ 100) * music_data.lengthInSeconds * 1000), 
 				timestamp_time = new Date(loadedtime.getTime() - song_position.getTime());
 
+			let timetableListNode = document.querySelector('#timetable_list > ul').cloneNode(true);
+
 			if(!timetableDic[0] || timetableDic[0].title !== music_data.title){
 				timetableDic.unshift({
 					timestamp: timestamp_time.getTime(),
@@ -267,19 +272,20 @@ chrome.runtime.onMessage.addListener((request) => {
 					title: music_data.title,
 					artist: document.querySelector('#now_playing_info .artist span').textContent,
 					videoId: music_data.videoId,
-					commentList: [],
 					gesture_rotate: 0,
 					new_fav: 0,
+					commentList: [],
 					brank: !!localStorage.endtime && parseInt(localStorage.endtime) + 10000 < timestamp_time.getTime()
 				});
-				if(100 < timetableDic.length){
-					timetableDic.splice(100, timetableDic.length - 100);
+				const timetableMax = 100;
+				if(timetableMax < timetableDic.length){
+					timetableDic.splice(timetableMax, timetableDic.length - timetableMax);
 				}
 
-				$('#timetable_list > ul').prepend($(timetableItemCreate(timetableDic[0])));
+				timetableListNode.prepend(timetableItemCreate(timetableDic[0]));
 
 				if(localStorage.ntc_flag === 'true' && !document.hasFocus()){
-					Notification.requestPermission().then((permission) => {
+					Notification.requestPermission().then(() => {
 						new Notification(music_data.title);
 					});
 				}
@@ -288,24 +294,26 @@ chrome.runtime.onMessage.addListener((request) => {
 				localStorage.endtime = (timestamp_time.getTime() + (music_data.lengthInSeconds * 1000)) + '';
 			}
 
-			document.querySelectorAll('#timetable_list > ul > li').forEach((element, index) => {
+			timetableListNode.querySelectorAll('li').forEach((element, index) => {
 				if(index < 100){
 					if(!!element.querySelectorAll('.timestamp').length){
-						element.querySelector('.timestamp').innerText = ((lag_ms) => {
-							const lag_s = parseInt(lag_ms / 1000);
-							if(lag_s < 3600){
-								return parseInt(lag_s / 60) + '分前';
+						element.querySelector('.timestamp').innerText = ((lag) => {
+							if(lag < 60){
+								return 'すこし前';
+							}else if(lag < 3600){
+								return parseInt(lag / 60) + '分前';
+							}else if(lag < 86400){
+								return parseInt(lag / 3600) + '時間前';
 							}
-							if(lag_s < 86400){
-								return parseInt(lag_s / 3600) + '時間前';
-							}
-							return parseInt(lag_s / 86400) + '日前';
-						})(nowtime - element.dataset.timestamp);
+							return parseInt(lag / 86400) + '日前';
+						})((nowtime - element.dataset.timestamp) / 1000);
 					}
 				}else{
 					element.remove();
 				}
 			});
+
+			document.querySelector('#timetable_list > ul').replaceWith(timetableListNode);
 		}, 500);
 	}
 });
@@ -319,16 +327,20 @@ function timetableItemCreate(itemData){
 	newNode.querySelector('.artist').textContent = itemData.artist;
 	newNode.querySelector('.source > a').href = `https://kiite.jp/search/song?keyword=${itemData.videoId}`;
 	if(!!itemData.gesture_rotate){
-		newNode.querySelector('.rotate').classList.add('show');
+		newNode.querySelector('.rotate').classList.remove('invisible');
 		newNode.querySelector('.rotate > .count').textContent = itemData.gesture_rotate;
 	}
 	if(!!itemData.new_fav){
-		newNode.querySelector('.new_fav').classList.add('show');
+		newNode.querySelector('.new_fav').classList.remove('invisible');
 		newNode.querySelector('.new_fav > .count').textContent = itemData.new_fav;
 	}
-	for(const element of itemData.commentList){
-		newNode.querySelector('.comment_list').appendChild(timetableCommentCreate(element));
+	if(!!itemData.commentList[0]){
+		newNode.querySelector('.comment_list').classList.remove('empty');
+		for(const element of itemData.commentList){
+			newNode.querySelector('.comment_list').appendChild(timetableCommentCreate(element));
+		}
 	}
+
 	if(itemData.brank){
 		newNode.appendChild(timetableBrankTemplate.cloneNode(true));
 	}
