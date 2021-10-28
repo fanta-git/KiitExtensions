@@ -1,6 +1,6 @@
 'use strict';
 
-const timetableItemTemplate = $(`
+const timetableItemTemplate = new Range().createContextualFragment(`
 	<li data-timestamp="">
 		<div class="bg_black"></div>
 		<div class="thumbnail" style=""></div>
@@ -27,27 +27,27 @@ const timetableItemTemplate = $(`
 		<div class="comment_list empty folded"></div>
 		<div class="comment_tail"></div>
 	</li>
-`).get(0);
+`);
 
-const timetableCommentTemplate = $(`
+const timetableCommentTemplate = new Range().createContextualFragment(`
 	<div class="comment">
 		<div class="comment_icon" style=""></div>
 		<div class="comment_text"></div>
 	</div>
-`).get(0);
+`);
 
-const timetableBrankTemplate = $(`
+const timetableBrankTemplate =  new Range().createContextualFragment(`
 	<li>
 		<div class="timetable_brank">
 			<i class="material-icons">more_vert</i>
 		</div>
 	</li>
-`).get(0);
+`);
 
 let timetableDic = JSON.parse(localStorage.timetable || '[]');
 
 window.onload = () => {
-	$('#now_playing_info .inner .source').after(`
+	document.querySelector('#now_playing_info .inner .source').insertAdjacentHTML('afterend', `
 		<div class="rd_toggle" id="rd_toggle">
 			<i class="material-icons">info</i>
 		</div>
@@ -56,7 +56,7 @@ window.onload = () => {
 		</div>
 	`);
 
-	$('#reasons').after(`
+	document.querySelector('#reasons').insertAdjacentHTML('afterend', `
 		<div id="music_data">
 			<div class="inner">
 				<div id="music_detail">
@@ -81,11 +81,11 @@ window.onload = () => {
 		</div>
 	`);
 
-	$('#cafe_menu > ul').append(`
+	document.querySelector('#cafe_menu > ul').insertAdjacentHTML('beforeend', `
 		<li data-val="timetable" class="timetable">選曲履歴</li>
 	`);
 
-	$('#cafe').append(`
+	document.querySelector('#cafe').insertAdjacentHTML('beforeend', `
 		<div id="timetable">
 			<div class="logo_mini">
 				<div class="logo_inner">

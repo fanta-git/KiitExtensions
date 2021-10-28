@@ -16,14 +16,9 @@
     },
     "content_scripts": [
         {
-            "matches": ["https://kiite.jp/my/playlist/edit/*"],
-            "css": ["ListToCSV/style.css"],
-            "js" : ["lib/jquery-3.6.0.js", "ListToCSV/script.js"]
-        },
-        {
             "matches": ["https://cafe.kiite.jp/*"],
             "css": ["CafeExp/style.css"],
-            "js" : ["lib/jquery-3.6.0.js","CafeExp/script.js"]
+            "js" : ["CafeExp/script.js"]
         },
         {
             "matches": ["https://embed.nicovideo.jp/watch/*"],
