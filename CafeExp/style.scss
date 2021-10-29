@@ -312,7 +312,7 @@
     .source .material-icons:hover {
         color: #FFF;
     }
-
+     
     .comment_list{
         display: flex;
         flex-direction: column;
@@ -321,13 +321,28 @@
         z-index: 1;
         padding: 3px 15px 3px;
 
-        &.empty, &.folded{
+        &, * {
+            transition-property: all;
+            transition-duration: .5s;
+            transition-timing-function: ease;
+        }
+        
+        &.folded .comment, .comment *, & {
+            transition-delay: 0s;
+        }
+
+        .comment, &.folded .comment *, &.folded {
+            transition-delay: .5s;
+        }
+
+        &.empty{
             display: none;
         }
 
         .comment {
             display: flex;
             column-gap: 5px;
+            opacity: 1;
         }
 
         .comment_icon {
@@ -342,14 +357,25 @@
             display: block;
             width: 100%;
             border-radius: .3em;
-            border: 1px rgba(0, 0, 0, 0.1) solid;
             font-size: 1.1em;
             background: #fffacd;
             padding: 8px;
             color: black;
             line-height: 1.4em;
+            position: relative;
         }
 
+        .comment_text::before {
+            content: '';
+            width: calc(100% - 2px);
+            height: calc(100% - 2px);
+            top: 0;
+            left: 0;
+            display: block;
+            position: absolute;
+            border-radius: .3em;
+            border: 1px rgba(0, 0, 0, 0.1) solid;
+        }
     }
 
     .comment_tail {
@@ -366,9 +392,29 @@
         }
     }
 
+    .comment_list.folded {
+        row-gap: 0px;
+        padding: 0px 15px;
+        
+        .comment {
+            opacity: 0;
+        }
+
+        .comment_text, .comment_text::before {
+            padding: 0;
+            font-size: 0;
+            border: 0;
+            row-gap: 0;
+        }
+        
+        .comment_icon {
+            height: 0;
+        }
+    }
+
     .comment_list.folded+.comment_tail i {
         transform: rotate(0deg);
-        transition: .5s;
+        transition: .5s .5s;
     }
 
     .comment_list.empty+.comment_tail {

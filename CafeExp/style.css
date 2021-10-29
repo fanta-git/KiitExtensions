@@ -278,12 +278,24 @@
   z-index: 1;
   padding: 3px 15px 3px;
 }
-#timetable_list .comment_list.empty, #timetable_list .comment_list.folded {
+#timetable_list .comment_list, #timetable_list .comment_list * {
+  transition-property: all;
+  transition-duration: .5s;
+  transition-timing-function: ease;
+}
+#timetable_list .comment_list.folded .comment, #timetable_list .comment_list .comment *, #timetable_list .comment_list {
+  transition-delay: 0s;
+}
+#timetable_list .comment_list .comment, #timetable_list .comment_list.folded .comment *, #timetable_list .comment_list.folded {
+  transition-delay: .5s;
+}
+#timetable_list .comment_list.empty {
   display: none;
 }
 #timetable_list .comment_list .comment {
   display: flex;
   column-gap: 5px;
+  opacity: 1;
 }
 #timetable_list .comment_list .comment_icon {
   height: 34px;
@@ -296,12 +308,23 @@
   display: block;
   width: 100%;
   border-radius: .3em;
-  border: 1px rgba(0, 0, 0, 0.1) solid;
   font-size: 1.1em;
   background: #fffacd;
   padding: 8px;
   color: black;
   line-height: 1.4em;
+  position: relative;
+}
+#timetable_list .comment_list .comment_text::before {
+  content: '';
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  top: 0;
+  left: 0;
+  display: block;
+  position: absolute;
+  border-radius: .3em;
+  border: 1px rgba(0, 0, 0, 0.1) solid;
 }
 #timetable_list .comment_tail {
   grid-area: tail;
@@ -315,9 +338,25 @@
   transform: rotate(180deg);
   transition: .5s;
 }
+#timetable_list .comment_list.folded {
+  row-gap: 0px;
+  padding: 0px 15px;
+}
+#timetable_list .comment_list.folded .comment {
+  opacity: 0;
+}
+#timetable_list .comment_list.folded .comment_text, #timetable_list .comment_list.folded .comment_text::before {
+  padding: 0;
+  font-size: 0;
+  border: 0;
+  row-gap: 0;
+}
+#timetable_list .comment_list.folded .comment_icon {
+  height: 0;
+}
 #timetable_list .comment_list.folded + .comment_tail i {
   transform: rotate(0deg);
-  transition: .5s;
+  transition: .5s .5s;
 }
 #timetable_list .comment_list.empty + .comment_tail {
   display: none;

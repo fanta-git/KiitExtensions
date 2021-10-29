@@ -49,7 +49,7 @@ const timetableBrankTemplate =  new Range().createContextualFragment(`
 let timetableDic = JSON.parse(localStorage.timetable || '[]');
 
 window.onload = () => {
-	document.querySelector('#now_playing_info .inner .source').insertAdjacentHTML('afterend', `
+	document.querySelector('#now_playing_info .source').insertAdjacentHTML('afterend', `
 		<div class="rd_toggle" id="rd_toggle">
 			<i class="material-icons">info</i>
 		</div>
