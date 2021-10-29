@@ -1,7 +1,7 @@
 'use strict';
 
 const timetableItemTemplate = new Range().createContextualFragment(`
-	<li data-timestamp="">
+	<div class="timetable_item" data-timestamp="">
 		<div class="bg_black"></div>
 		<div class="thumbnail" style=""></div>
 		<div class="music_info">
@@ -25,8 +25,10 @@ const timetableItemTemplate = new Range().createContextualFragment(`
 			</div>
 		</div>
 		<div class="comment_list empty folded"></div>
-		<div class="comment_tail"></div>
-	</li>
+		<div class="comment_tail">
+			<i class="material-icons">expand_more</i>
+		</div>
+	</div>
 `);
 
 const timetableCommentTemplate = new Range().createContextualFragment(`
@@ -37,11 +39,11 @@ const timetableCommentTemplate = new Range().createContextualFragment(`
 `);
 
 const timetableBrankTemplate =  new Range().createContextualFragment(`
-	<li>
+	<div class="timetable_item">
 		<div class="timetable_brank">
 			<i class="material-icons">more_vert</i>
 		</div>
-	</li>
+	</div>
 `);
 
 let timetableDic = JSON.parse(localStorage.timetable || '[]');
@@ -102,30 +104,27 @@ window.onload = () => {
 				<div id="timetable_del_wrapper">
 					<div id="timetable_del">履歴を全て削除</div>
 				</div>
-				<div id="timetable_list">
-					<ul></ul>
-				</div>
+				<div id="timetable_list"></div>
 			</div>
 		</div>
 	`);
-	
+
+	if(!!timetableDic[0]){
+		let timetableListNode = document.createDocumentFragment();
+		for(const element of timetableDic){
+			timetableListNode.append(timetableItemCreate(element));
+		}
+		document.querySelector('#timetable_list').append(timetableListNode);
+	}
+
 	const qsCafe = document.querySelector('#cafe'),
 		qsaMenuLi = document.querySelectorAll('#cafe_menu > ul > li'),
 		viewclass = Array.from(qsaMenuLi, v => `view_${v.dataset.val}`),
 		qsRdIcon = document.querySelector('#rd_toggle .material-icons');
-	
-	qsCafe.classList.add('view_reasons');
 
 	document.querySelector('#rd_toggle').onclick = () => {
-		if(qsRdIcon.innerText === 'info'){
-			qsRdIcon.innerText = 'people';
-			qsCafe.classList.remove('view_reasons');
-			qsCafe.classList.add('view_music_data');
-		}else{
-			qsRdIcon.innerText = 'info';
-			qsCafe.classList.remove('view_music_data');
-			qsCafe.classList.add('view_reasons');
-		}
+		qsRdIcon.textContent = (qsRdIcon.innerText === 'info') ? 'people' : 'info';
+		qsCafe.classList.toggle('view_music_data');
 	};
 
 	document.querySelector('#ntc_toggle').onclick = () => {
@@ -140,31 +139,24 @@ window.onload = () => {
 			qsCafe.classList.add(`view_${element.dataset.val}`);
 		};
 	};
+	
 
 	document.querySelector('#timetable_del').onclick = () => {
 		if(confirm('本当に再生履歴を全て削除しますか？')){
 			localStorage.timetable = '[]';
 			localStorage.endtime = '';
 			timetableDic = [];
-			for(const element of document.querySelectorAll('#timetable_list > ul > li')){
+			for(const element of document.querySelectorAll('#timetable_list .timetable_item')){
 				element.remove();
 			};
 		}
 	};
 
-	let timetableListNode = document.createDocumentFragment();
-	for(const element of timetableDic){
-		timetableListNode.append(timetableItemCreate(element));
-	}
-	if(!!timetableListNode){
-		document.querySelector('#timetable_list > ul').append(timetableListNode);
-	}
-
 	setTimeout(() => {
 		let obsComment = {};
 		setInterval(() => {
 			const qsaUser = document.querySelectorAll('#cafe_space .user'),
-				qsTimetableFirst = document.querySelector('#timetable_list > ul > li:first-child');
+				qsTimetableFirst = document.querySelector('#timetable_list .timetable_item:first-child');
 			let newData = {};
 			qsaUser.forEach(e => {
 				e.classList.forEach(v => {
@@ -263,7 +255,7 @@ chrome.runtime.onMessage.addListener((request) => {
 				song_position = new Date((1 - parseFloat(document.querySelector('#song_position .position').style.width.slice(0, -1))/ 100) * music_data.lengthInSeconds * 1000), 
 				timestamp_time = new Date(loadedtime.getTime() - song_position.getTime());
 
-			let timetableListNode = document.querySelector('#timetable_list > ul').cloneNode(true);
+			let timetableListNode = document.querySelector('#timetable_list').cloneNode(true);
 
 			if(!timetableDic[0] || timetableDic[0].title !== music_data.title){
 				timetableDic.unshift({
@@ -294,9 +286,9 @@ chrome.runtime.onMessage.addListener((request) => {
 				localStorage.endtime = (timestamp_time.getTime() + (music_data.lengthInSeconds * 1000)) + '';
 			}
 
-			timetableListNode.querySelectorAll('li').forEach((element, index) => {
+			timetableListNode.querySelectorAll('.timetable_item').forEach((element, index) => {
 				if(index < 100){
-					if(!!element.querySelectorAll('.timestamp').length){
+					if(!!element.querySelector('.timestamp')){
 						element.querySelector('.timestamp').innerText = ((lag) => {
 							if(lag < 60){
 								return 'すこし前';
@@ -308,12 +300,17 @@ chrome.runtime.onMessage.addListener((request) => {
 							return parseInt(lag / 86400) + '日前';
 						})((nowtime - element.dataset.timestamp) / 1000);
 					}
+					if(!!element.querySelector('.comment_tail')){
+						element.querySelector('.comment_tail').onclick = (_this) => {
+							_this.target.closest('.timetable_item').querySelector('.comment_list').classList.toggle('folded');
+						};
+					}
 				}else{
 					element.remove();
 				}
 			});
 
-			document.querySelector('#timetable_list > ul').replaceWith(timetableListNode);
+			document.querySelector('#timetable_list').replaceWith(timetableListNode);
 		}, 500);
 	}
 });
@@ -321,7 +318,7 @@ chrome.runtime.onMessage.addListener((request) => {
 function timetableItemCreate(itemData){
 	let newNode = document.createDocumentFragment();
 	newNode.appendChild(timetableItemTemplate.cloneNode(true));
-	newNode.querySelector('li').dataset.timestamp = itemData.timestamp;
+	newNode.querySelector('.timetable_item').dataset.timestamp = itemData.timestamp;
 	newNode.querySelector('.thumbnail').style.backgroundImage = `url('https://nicovideo.cdn.nimg.jp/thumbnails/${itemData.thumbnailId.split('.')[0]}/${itemData.thumbnailId}')`;
 	newNode.querySelector('.title').textContent = itemData.title;
 	newNode.querySelector('.artist').textContent = itemData.artist;

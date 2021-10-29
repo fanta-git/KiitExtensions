@@ -30,24 +30,20 @@
     }
 }
 
-#cafe #reasons {
+#cafe.view_music_data #reasons{
     display: none;
 }
 
-#cafe.view_reasons #reasons{
-    display: block;
-}
-
 #cafe #music_data {
+    display: block;
     z-index: 10;
     grid-row: 2 / 4;
     grid-column: 3 / 5;
     position: relative;
-	display: none;
 }
 
-#cafe.view_music_data #music_data {
-    display: block;
+#cafe:not(.view_music_data) #music_data {
+	display: none;
 }
 
 #music_data .inner {
@@ -167,13 +163,15 @@
 
 #timetable_list{   
     padding: 10px 40px 10px;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    row-gap: 8px;
 
     * {
         z-index: 1;
     }
 
-    li {
+    .timetable_item {
         display: grid;
         grid-template-columns: 60px 1fr;
         grid-template-rows: 60px auto 1fr auto;
@@ -184,7 +182,6 @@
             ".    comm" 
             ".    tail";
         position: relative;
-        margin: 4px 0 4px;
     }
 
     .bg_black {
@@ -204,7 +201,7 @@
     .music_info {
         display: grid;
         grid-area: info;
-        padding: 10px 15px 0px;
+        padding: 10px 15px 10px;
         grid-template-columns: 58px 5fr 1fr 1fr 20px;
         grid-template-rows: 18px 18px 18px;
         row-gap: 3px;
@@ -224,7 +221,7 @@
         justify-content: center;
     }
 
-    li:first-child .onair {
+    .timetable_item:first-child .onair {
         display: flex;
     }
 
@@ -233,7 +230,7 @@
         display: none;
     }
 
-    li:first-child .timestamp {
+    .timetable_item:first-child .timestamp {
         display: none;
     }
 
@@ -322,41 +319,56 @@
         row-gap: 5px;
         grid-area: comm;
         z-index: 1;
-        padding: 3px 15px 0px;
-    }
+        padding: 3px 15px 3px;
 
-    .comment_list.empty{
-        display: none;
-    }
+        &.empty, &.folded{
+            display: none;
+        }
 
-    .comment {
-        display: flex;
-        column-gap: 5px;
-    }
+        .comment {
+            display: flex;
+            column-gap: 5px;
+        }
 
-    .comment_icon {
-        height: 34px;
-        width: 34px;
-        background-size: cover;
-        background-position: center center;
-        border-radius: 50%;
-    }
+        .comment_icon {
+            height: 34px;
+            width: 34px;
+            background-size: cover;
+            background-position: center center;
+            border-radius: 50%;
+        }
 
-    .comment_text {
-        display: block;
-        width: 100%;
-        border-radius: .3em;
-        border: 1px rgba(0, 0, 0, 0.1) solid;
-        font-size: 1.1em;
-        background: #fffacd;
-        padding: 8px;
-        color: black;
-        line-height: 1.4em;
+        .comment_text {
+            display: block;
+            width: 100%;
+            border-radius: .3em;
+            border: 1px rgba(0, 0, 0, 0.1) solid;
+            font-size: 1.1em;
+            background: #fffacd;
+            padding: 8px;
+            color: black;
+            line-height: 1.4em;
+        }
+
     }
 
     .comment_tail {
         grid-area: tail;
-        height: 10px;
+        height: 20px;
+        background-color: #666666;
+        align-items: center;
+        text-align: center;
+
+        i {
+            font-size: 18px;
+            transform: rotate(180deg);
+            transition: .5s;
+        }
+    }
+
+    .comment_list.folded+.comment_tail i {
+        transform: rotate(0deg);
+        transition: .5s;
     }
 
     .comment_list.empty+.comment_tail {
@@ -389,7 +401,6 @@
     #timetable .logo_mini {
         display: block;
     }
-    
 }
 
 @media screen and (max-width: 900px){
