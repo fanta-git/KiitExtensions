@@ -182,7 +182,7 @@
 #timetable_list .music_info {
   display: grid;
   grid-area: info;
-  padding: 10px 15px 10px;
+  padding: 10px 15px 5px;
   grid-template-columns: 58px 5fr 1fr 1fr 20px;
   grid-template-rows: 18px 18px 18px;
   row-gap: 3px;
@@ -210,6 +210,45 @@
 #timetable_list .timestamp {
   background: #666;
   display: flex;
+}
+#timetable_list .reason {
+  display: flex;
+  column-gap: 5px;
+  padding: 0 10px;
+  align-items: center;
+}
+#timetable_list .reason .icon {
+  width: 22px;
+  height: 22px;
+  background-size: cover;
+  background-position: center;
+  border-radius: 50%;
+}
+#timetable_list .reason .text {
+  display: inline-block;
+  font-size: 12px;
+}
+#timetable_list .reason .text a {
+  text-decoration: underline;
+  font-weight: bold;
+}
+#timetable_list .reason .text a:hover {
+  text-decoration: none;
+}
+#timetable_list .reason .text b {
+  font-weight: bold;
+}
+#timetable_list .reason .user_name {
+  color: #ffef00;
+}
+#timetable_list .reason .priority_list {
+  color: cyan;
+}
+#timetable_list .reason .fav {
+  color: #ff33aa;
+}
+#timetable_list .reason .playlist {
+  color: #10d300;
 }
 #timetable_list .title {
   display: flex;
@@ -276,18 +315,7 @@
   row-gap: 5px;
   grid-area: comm;
   z-index: 1;
-  padding: 3px 15px 3px;
-}
-#timetable_list .comment_list, #timetable_list .comment_list * {
-  transition-property: all;
-  transition-duration: .5s;
-  transition-timing-function: ease;
-}
-#timetable_list .comment_list.folded .comment, #timetable_list .comment_list .comment *, #timetable_list .comment_list {
-  transition-delay: 0s;
-}
-#timetable_list .comment_list .comment, #timetable_list .comment_list.folded .comment *, #timetable_list .comment_list.folded {
-  transition-delay: .5s;
+  padding: 0px 15px 5px;
 }
 #timetable_list .comment_list.empty {
   display: none;
@@ -317,8 +345,9 @@
 }
 #timetable_list .comment_list .comment_text::before {
   content: '';
-  width: calc(100% - 2px);
-  height: calc(100% - 2px);
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
   top: 0;
   left: 0;
   display: block;
@@ -335,31 +364,46 @@
 }
 #timetable_list .comment_tail i {
   font-size: 18px;
+  color: #FFFFFF;
   transform: rotate(180deg);
-  transition: .5s;
+  transition: 0.3s;
+}
+#timetable_list .comment_tail:hover {
+  background-color: #444444;
+  cursor: pointer;
+}
+#timetable_list .comment_list.folded + .comment_tail i {
+  transform: rotate(0deg);
+  transition: 0.3s 0.2s;
+}
+#timetable_list .comment_list.empty + .comment_tail {
+  display: none;
+}
+#timetable_list .comment_list:not(.folded) .comment {
+  transition: 0.3s 0.2s;
+}
+#timetable_list .comment_list:not(.folded), #timetable_list .comment_list:not(.folded) .comment * {
+  transition: 0.3s 0s;
 }
 #timetable_list .comment_list.folded {
   row-gap: 0px;
   padding: 0px 15px;
 }
 #timetable_list .comment_list.folded .comment {
+  transition: 0.2s 0s;
   opacity: 0;
+}
+#timetable_list .comment_list.folded, #timetable_list .comment_list.folded .comment * {
+  transition: 0.3s 0.2s;
 }
 #timetable_list .comment_list.folded .comment_text, #timetable_list .comment_list.folded .comment_text::before {
   padding: 0;
   font-size: 0;
-  border: 0;
+  border-width: 0;
   row-gap: 0;
 }
 #timetable_list .comment_list.folded .comment_icon {
   height: 0;
-}
-#timetable_list .comment_list.folded + .comment_tail i {
-  transform: rotate(0deg);
-  transition: .5s .5s;
-}
-#timetable_list .comment_list.empty + .comment_tail {
-  display: none;
 }
 #timetable_list .timetable_brank {
   grid-column: 1 / -1;

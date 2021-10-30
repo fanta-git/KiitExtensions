@@ -1,5 +1,12 @@
 'use strict';
 
+const timetableMax = 100,
+	waitTime = 2000,
+	intervalTime = 1000,
+	colorThreshold = 6,
+	commmentFold = true,
+	displayReasonAll = true;
+
 const timetableItemTemplate = new Range().createContextualFragment(`
 	<div class="timetable_item" data-timestamp="">
 		<div class="bg_black"></div>
@@ -7,6 +14,11 @@ const timetableItemTemplate = new Range().createContextualFragment(`
 		<div class="music_info">
 			<div class="onair">ON AIR</div>
 			<div class="timestamp">--分前</div>
+			<div class="reason">
+				<div class="icon" style=""></div>
+				<div class="text">
+				</div>
+			</div>
 			<div class="title"></div>
 			<div class="artist"></div>
 			<div class="rotate invisible">
@@ -24,8 +36,8 @@ const timetableItemTemplate = new Range().createContextualFragment(`
 				<a href="" target="_brank"><i class="material-icons">open_in_new</i></a>		
 			</div>
 		</div>
-		<div class="comment_list empty folded"></div>
-		<div class="comment_tail">
+		<div class="comment_list empty${commmentFold ? ' folded' : ''}"></div>
+		<div class="comment_tail${commmentFold ? '' : ' invisible'}">
 			<i class="material-icons">expand_more</i>
 		</div>
 	</div>
@@ -44,6 +56,18 @@ const timetableBrankTemplate =  new Range().createContextualFragment(`
 			<i class="material-icons">more_vert</i>
 		</div>
 	</div>
+`);
+
+const reasonTextPriorityTemplate = new Range().createContextualFragment(`
+	<a class="user_name" href="" target="_blank"></a>さんの<a class="priority_list" href="" target="_blank">イチ推しリスト</a>の曲です
+`);
+
+const reasonTextFavTemplate = new Range().createContextualFragment(`
+	<a class="user_name" href="" target="_blank"></a>さんの<b class="fav">お気に入り</b>の曲です
+`);
+
+const reasonTextPlaylistTemplate = new Range().createContextualFragment(`
+	<a class="user_name" href="" target="_blank"></a>さんの<b class="playlist">プレイリスト</b>の曲です
 `);
 
 let timetableDic = JSON.parse(localStorage.timetable || '[]');
@@ -98,7 +122,7 @@ window.onload = () => {
 			<div class="inner">
 				<h2>選曲履歴</h2>
 				<div class="exp">
-					これまで流れた曲とコメントを最大100曲分まで確認することができます<br>
+					これまで流れた曲とコメントを最大${timetableMax}曲分まで確認することができます<br>
 					あなたがKiiteCafeを開いていない時の履歴を確認することはできません
 				</div>
 				<div id="timetable_del_wrapper">
@@ -155,50 +179,52 @@ window.onload = () => {
 	setTimeout(() => {
 		let obsComment = {};
 		setInterval(() => {
-			const qsaUser = document.querySelectorAll('#cafe_space .user'),
-				qsTimetableFirst = document.querySelector('#timetable_list .timetable_item:first-child');
-			let newData = {};
-			qsaUser.forEach(e => {
-				e.classList.forEach(v => {
-					newData[v] = (newData[v] || 0) + 1;
+			if(!!timetableDic[0]){
+				const qsaUser = document.querySelectorAll('#cafe_space .user'),
+					qsTimetableFirst = document.querySelector('#timetable_list .timetable_item:first-child');
+				let newData = {};
+				qsaUser.forEach(e => {
+					e.classList.forEach(v => {
+						newData[v] = (newData[v] || 0) + 1;
+					});
 				});
-			});
-			for(const element of qsaUser){
-				const commentData = {
-					iconName: element.querySelector('.thumbnail').style.backgroundImage.split('"')[1].split('/')[4],
-					text: element.querySelector('.comment').textContent,
-					userId: element.dataset.user_id,
-					userName: element.querySelector('.user_nickname').textContent
-				};
-				if(obsComment[commentData.userId] !== undefined && !!commentData.text && obsComment[commentData.userId] !== commentData.text){
-					if(localStorage.ntc_flag === 'true' && !document.hasFocus()){
-						Notification.requestPermission().then(() => {
-							new Notification(commentData.text,{ body : commentData.userName });
-						});
+				for(const element of qsaUser){
+					const commentData = {
+						iconUrl: element.querySelector('.thumbnail').style.backgroundImage.split('"')[1],
+						text: element.querySelector('.comment').textContent,
+						userId: element.dataset.user_id,
+						userName: element.querySelector('.user_nickname').textContent
+					};
+					if(obsComment[commentData.userId] !== undefined && !!commentData.text && obsComment[commentData.userId] !== commentData.text){
+						if(localStorage.ntc_flag === 'true' && !document.hasFocus()){
+							Notification.requestPermission().then(() => {
+								new Notification(commentData.text,{ body : commentData.userName });
+							});
+						}
+						qsTimetableFirst.querySelector('.comment_list').append(timetableCommentCreate(commentData));
+						qsTimetableFirst.querySelector('.comment_list').classList.remove('empty');
+						timetableDic[0].commentList.push(commentData);
+						localStorage.timetable = JSON.stringify(timetableDic);
 					}
-					qsTimetableFirst.querySelector('.comment_list').append(timetableCommentCreate(commentData));
-					qsTimetableFirst.querySelector('.comment_list').classList.remove('empty');
-					timetableDic[0].commentList.push(commentData);
-					localStorage.timetable = JSON.stringify(timetableDic);
+					obsComment[commentData.userId] = commentData.text;
 				}
-				obsComment[commentData.userId] = commentData.text;
-			}
-			if(!!newData.gesture_rotate && timetableDic[0].gesture_rotate < newData.gesture_rotate){
-				if(!timetableDic[0].gesture_rotate){
-					qsTimetableFirst.querySelector('.rotate').classList.remove('invisible');
+				if(!!newData.gesture_rotate && timetableDic[0].gesture_rotate < newData.gesture_rotate){
+					if(!timetableDic[0].gesture_rotate){
+						qsTimetableFirst.querySelector('.rotate').classList.remove('invisible');
+					}
+					qsTimetableFirst.querySelector('.rotate > .count').textContent = newData.gesture_rotate;
+					timetableDic[0].gesture_rotate = newData.gesture_rotate;
 				}
-				qsTimetableFirst.querySelector('.rotate > .count').textContent = newData.gesture_rotate;
-				timetableDic[0].gesture_rotate = newData.gesture_rotate;
-			}
-			if(!!newData.new_fav && timetableDic[0].new_fav < newData.new_fav){
-				if(!timetableDic[0].new_fav){
-					qsTimetableFirst.querySelector('.new_fav').classList.remove('invisible');
+				if(!!newData.new_fav && timetableDic[0].new_fav < newData.new_fav){
+					if(!timetableDic[0].new_fav){
+						qsTimetableFirst.querySelector('.new_fav').classList.remove('invisible');
+					}
+					qsTimetableFirst.querySelector('.new_fav > .count').textContent = newData.new_fav;
+					timetableDic[0].new_fav = newData.new_fav;
 				}
-				qsTimetableFirst.querySelector('.new_fav > .count').textContent = newData.new_fav;
-				timetableDic[0].new_fav = newData.new_fav;
 			}
-		}, 1000);
-	},3000);
+		}, intervalTime);
+	}, waitTime);
 };
 
 chrome.runtime.onMessage.addListener((request) => {
@@ -216,7 +242,6 @@ chrome.runtime.onMessage.addListener((request) => {
 				.replace(/(?<!(https?:\/\/[\w!?/+\-~=;.,*&@#$%()'[\]]+|\w+))@(\w+)/g, '<a href="https://twitter.com/$1" target="_blank">$&</a>')
 				.replace(/#[0-9a-fA-F]{6}/g, ((match) => {
 					let [r, g, b] = [parseInt(match.substr(1, 2), 16), parseInt(match.substr(3, 2), 16), parseInt(match.substr(5, 2), 16)];
-					const thr = 6;
 					const blightRatio = (_r, _g, _b) => {
 						[_r, _g, _b] = [Math.min(_r / 255, 1), Math.min(_g / 255, 1), Math.min(_b / 255, 1)];
 
@@ -230,12 +255,12 @@ chrome.runtime.onMessage.addListener((request) => {
 
 					if(r === g && g === b){
 						[r, g, b] = [255 - r, 255 - g, 255 - b];
-					}else if(blightRatio(r, g, b) < thr){
+					}else if(blightRatio(r, g, b) < colorThreshold){
 						[r, g, b] = [r || 1, g || 1, b || 1];
 						let top = 255 / Math.min(r, g, b), bottom = 1,mag = (top + bottom)/ 2;
 
 						for(let i = 0; i < 8; i++){
-							if(blightRatio(r * mag, g * mag, b * mag) < thr){
+							if(blightRatio(r * mag, g * mag, b * mag) < colorThreshold){
 								bottom = mag;
 							}else{
 								top = mag;
@@ -253,25 +278,46 @@ chrome.runtime.onMessage.addListener((request) => {
 			const nowtime = Date.now(), 
 				loadedtime = new Date(parseInt(music_data.actionTrackId.split('_')[1])), 
 				song_position = new Date((1 - parseFloat(document.querySelector('#song_position .position').style.width.slice(0, -1))/ 100) * music_data.lengthInSeconds * 1000), 
-				timestamp_time = new Date(loadedtime.getTime() - song_position.getTime());
-
+				timestamp_time = new Date(loadedtime.getTime() - song_position.getTime()),
+				qsReasonFirst = document.querySelector('#reasons li:first-child');
+			console.log('ReasonFirst', qsReasonFirst);
 			let timetableListNode = document.querySelector('#timetable_list').cloneNode(true);
 
 			if(!timetableDic[0] || timetableDic[0].title !== music_data.title){
 				timetableDic.unshift({
 					timestamp: timestamp_time.getTime(),
-					thumbnailId: music_data.thumbnailUrl.split('/')[5],
+					thumbnailUrl: music_data.thumbnailUrl,
 					title: music_data.title,
 					artist: document.querySelector('#now_playing_info .artist span').textContent,
 					videoId: music_data.videoId,
 					gesture_rotate: 0,
 					new_fav: 0,
+					reason: {
+						iconUrl: qsReasonFirst.querySelector('.user_icon').style.backgroundImage.split('"')[1],
+						userNickname: qsReasonFirst.querySelector('.text a:nth-child(1)').textContent,
+						userUrlId: qsReasonFirst.querySelector('.text a:nth-child(1)').href.split('/')[4],
+						listUrl: '',
+						text: Array.from(qsReasonFirst.querySelectorAll('.comment span'), e => e.textContent),
+					}, 
 					commentList: [],
-					brank: !!localStorage.endtime && parseInt(localStorage.endtime) + 10000 < timestamp_time.getTime()
+					brank: !!localStorage.endtime && parseInt(localStorage.endtime) + 10000 < timestamp_time.getTime(),
 				});
-				const timetableMax = 100;
+
+				const qsReasonKind = qsReasonFirst.querySelector('.text a:nth-child(2), .text b');
+				switch(qsReasonKind.textContent){
+					case 'イチ推しリスト':
+						timetableDic[0].reason.listUrl = qsReasonKind.href.split('/')[4];
+						break;
+					case 'お気に入り':
+						timetableDic[0].reason.listUrl = '__faves__';
+						break;
+					case 'プレイリスト':
+						timetableDic[0].reason.listUrl = '__playlist__';
+						break;
+				}
+
 				if(timetableMax < timetableDic.length){
-					timetableDic.splice(timetableMax, timetableDic.length - timetableMax);
+					timetableDic.splice(timetableMax);
 				}
 
 				timetableListNode.prepend(timetableItemCreate(timetableDic[0]));
@@ -287,7 +333,7 @@ chrome.runtime.onMessage.addListener((request) => {
 			}
 
 			timetableListNode.querySelectorAll('.timetable_item').forEach((element, index) => {
-				if(index < 100){
+				if(index < timetableMax){
 					if(!!element.querySelector('.timestamp')){
 						element.querySelector('.timestamp').innerText = ((lag) => {
 							if(lag < 60){
@@ -302,7 +348,20 @@ chrome.runtime.onMessage.addListener((request) => {
 					}
 					if(!!element.querySelector('.comment_tail')){
 						element.querySelector('.comment_tail').onclick = (_this) => {
-							_this.target.closest('.timetable_item').querySelector('.comment_list').classList.toggle('folded');
+							if((_this.ctrlKey && !_this.metaKey) || (!_this.ctrlKey && _this.metaKey)){
+								const elementFolded = _this.target.closest('.timetable_item').querySelector('.comment_list').classList.contains('folded');
+								if(elementFolded){
+									document.querySelectorAll('#timetable_list .comment_list').forEach(e => {
+										e.classList.remove('folded');
+									});
+								}else{
+									document.querySelectorAll('#timetable_list .comment_list').forEach(e => {
+										e.classList.add('folded');
+									});
+								}
+							}else{
+								_this.target.closest('.timetable_item').querySelector('.comment_list').classList.toggle('folded');
+							}
 						};
 					}
 				}else{
@@ -311,15 +370,36 @@ chrome.runtime.onMessage.addListener((request) => {
 			});
 
 			document.querySelector('#timetable_list').replaceWith(timetableListNode);
-		}, 500);
+		}, waitTime);
 	}
 });
 
 function timetableItemCreate(itemData){
 	let newNode = document.createDocumentFragment();
 	newNode.appendChild(timetableItemTemplate.cloneNode(true));
+	newNode.querySelector('.thumbnail').style.backgroundImage = `url("${itemData.thumbnailUrl}")`;
+	newNode.querySelector('.reason .icon').style.backgroundImage = `url("${itemData.reason.iconUrl}")`;
+	switch(itemData.reason.listUrl){
+		case '__faves__':
+			newNode.querySelector('.reason .text').append(reasonTextFavTemplate.cloneNode(true));
+			if(!displayReasonAll){
+				newNode.querySelector('.reason').classList.add('invisible');
+			}
+			break;
+		case '__playlist__':
+			newNode.querySelector('.reason .text').append(reasonTextPlaylistTemplate.cloneNode(true));
+			if(!displayReasonAll){
+				newNode.querySelector('.reason').classList.add('invisible');
+			}
+			break;
+		default:
+			newNode.querySelector('.reason .text').append(reasonTextPriorityTemplate.cloneNode(true));
+			newNode.querySelector('.reason .priority_list').href = `https://kiite.jp/playlist/${itemData.reason.listUrl}`;
+			break;
+	}
+	newNode.querySelector('.reason .user_name').href = `https://kiite.jp/user/${itemData.reason.userUrlId}`;
+	newNode.querySelector('.reason .user_name').textContent = itemData.reason.userNickname;
 	newNode.querySelector('.timetable_item').dataset.timestamp = itemData.timestamp;
-	newNode.querySelector('.thumbnail').style.backgroundImage = `url('https://nicovideo.cdn.nimg.jp/thumbnails/${itemData.thumbnailId.split('.')[0]}/${itemData.thumbnailId}')`;
 	newNode.querySelector('.title').textContent = itemData.title;
 	newNode.querySelector('.artist').textContent = itemData.artist;
 	newNode.querySelector('.source > a').href = `https://kiite.jp/search/song?keyword=${itemData.videoId}`;
@@ -346,13 +426,7 @@ function timetableItemCreate(itemData){
 
 function timetableCommentCreate(itemData){
 	let newNode = timetableCommentTemplate.cloneNode(true);
-	let imgUrl;
-	if(itemData.iconName === 'icon-user.jpg'){
-		imgUrl = 'https://kiite.jp/img/icon-user.jpg';
-	}else{
-		imgUrl = `https://d7209z8dzwjpy.cloudfront.net/avatar/${itemData.iconName}`;
-	}
-	newNode.querySelector('.comment_icon').style.backgroundImage = `url('${imgUrl}')`;
+	newNode.querySelector('.comment_icon').style.backgroundImage = `url("${itemData.iconUrl}")`;
 	newNode.querySelector('.comment_text').textContent = itemData.text;
 	return newNode;
 }
