@@ -165,9 +165,9 @@ $commentFade: .2s;
     cursor: pointer;
 }
 
-#timetable_list{   
+#timetable_list{
+    display: flex;   
     padding: 10px 40px 10px;
-    display: flex;
     flex-direction: column;
     row-gap: 8px;
 

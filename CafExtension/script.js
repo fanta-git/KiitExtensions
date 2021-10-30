@@ -167,7 +167,6 @@ window.onload = () => {
 		};
 	};
 	
-
 	document.querySelector('#timetable_del').onclick = () => {
 		if(confirm('本当に再生履歴を全て削除しますか？')){
 			localStorage.timetable = '[]';

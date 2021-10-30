@@ -1,7 +1,7 @@
 {
-    "name": "Kiite-Expantion",
+    "name": "KiitExtension",
     "author": "fanta",
-    "description": "Kiite",
+    "description": "PC版KiiteCafeに動画概要表示や選曲履歴機能を追加する拡張機能です",
     "version": "1.0.0",
     "manifest_version": 2,
     "permissions": [
@@ -17,12 +17,12 @@
     "content_scripts": [
         {
             "matches": ["https://cafe.kiite.jp/*"],
-            "css": ["CafeExp/style.css"],
-            "js" : ["CafeExp/script.js"]
+            "css": ["CafExtension/style.css"],
+            "js" : ["CafExtension/script.js"]
         },
         {
             "matches": ["https://embed.nicovideo.jp/watch/*"],
-            "js" : ["CafeExp/iframe.js"],
+            "js" : ["CafExtension/iframe.js"],
             "all_frames": true
         }
     ]
