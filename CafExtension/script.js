@@ -247,9 +247,9 @@ chrome.runtime.onMessage.addListener((request) => {
 			});
 		}
 
-		document.querySelector('#viewCounter').innerText = parseInt(music_data.viewCounter).toLocaleString();
-		document.querySelector('#mylistCounter').innerText = parseInt(music_data.mylistCounter).toLocaleString();
-		document.querySelector('#commentCounter').innerText = parseInt(music_data.thread.commentCounter).toLocaleString();
+		document.querySelector('#viewCounter').textContent = parseInt(music_data.viewCounter).toLocaleString();
+		document.querySelector('#mylistCounter').textContent = parseInt(music_data.mylistCounter).toLocaleString();
+		document.querySelector('#commentCounter').textContent = parseInt(music_data.thread.commentCounter).toLocaleString();
 		document.querySelector('#music_description').innerHTML = (
 			music_data.description
 				.replace(/https?:\/\/[\w!?/+\-~=;.,*&@#$%()'[\]]+/g, '<a href="$&" target="_blank">$&</a>')
