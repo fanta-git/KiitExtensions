@@ -292,13 +292,13 @@ chrome.runtime.onMessage.addListener((request) => {
 		);
 
 		setTimeout(() => {
+			console.time('a');
 			const nowtime = Date.now(), 
 				loadedtime = parseInt(music_data.actionTrackId.split('_')[1]), 
 				song_position = (1 - parseFloat(document.querySelector('#song_position .position').style.width.slice(0, -1))/ 100) * music_data.lengthInSeconds * 1000, 
 				timestamp_time = loadedtime - song_position,
 				qsReasonFirst = document.querySelector('#reasons li:first-child');
 			console.log('ReasonFirst', qsReasonFirst);
-			let timetableListNode = document.querySelector('#timetable_list').cloneNode(true);
 
 			if(!timetableDic[0] || timetableDic[0].title !== music_data.title){
 				timetableDic.unshift({
@@ -337,13 +337,13 @@ chrome.runtime.onMessage.addListener((request) => {
 					timetableDic.splice(timetableMax);
 				}
 
-				timetableListNode.prepend(timetableItemCreate(timetableDic[0]));
+				document.querySelector('#timetable_list').prepend(timetableItemCreate(timetableDic[0]));
 
 				localStorage.timetable = JSON.stringify(timetableDic);
 				musicEndtime = timestamp_time + music_data.lengthInSeconds * 1000;
 				localStorage.endtime = musicEndtime + '';
 			}
-			timetableListNode.querySelectorAll('.timetable_item').forEach((element, index) => {
+			document.querySelectorAll('#timetable_list .timetable_item').forEach((element, index) => {
 				if(index < timetableMax){
 					if(!!index){
 						element.classList.remove('onair_now');
@@ -362,30 +362,11 @@ chrome.runtime.onMessage.addListener((request) => {
 							return parseInt(lag / 86400) + '日前';
 						})((nowtime - element.dataset.timestamp) / 1000);
 					}
-					if(!!element.querySelector('.comment_tail')){
-						element.querySelector('.comment_tail').onclick = (_this) => {
-							if((_this.ctrlKey && !_this.metaKey) || (!_this.ctrlKey && _this.metaKey)){
-								const elementFolded = _this.target.closest('.timetable_item').querySelector('.comment_list').classList.contains('folded');
-								if(elementFolded){
-									document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
-										e.classList.remove('folded');
-									});
-								}else{
-									document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
-										e.classList.add('folded');
-									});
-								}
-							}else{
-								_this.target.closest('.timetable_item').querySelector('.comment_list').classList.toggle('folded');
-							}
-						};
-					}
 				}else{
 					element.remove();
 				}
 			});
-
-			document.querySelector('#timetable_list').replaceWith(timetableListNode);
+			console.timeEnd('a');
 		}, waitTime);
 	}
 });
@@ -432,6 +413,24 @@ function timetableItemCreate(itemData){
 		for(const element of itemData.commentList){
 			newNode.querySelector('.comment_list').appendChild(timetableCommentCreate(element));
 		}
+	}
+	if(!!newNode.querySelector('.comment_tail')){
+		newNode.querySelector('.comment_tail').onclick = (_this) => {
+			if((_this.ctrlKey && !_this.metaKey) || (!_this.ctrlKey && _this.metaKey)){
+				const elementFolded = _this.target.closest('.timetable_item').querySelector('.comment_list').classList.contains('folded');
+				if(elementFolded){
+					document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
+						e.classList.remove('folded');
+					});
+				}else{
+					document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
+						e.classList.add('folded');
+					});
+				}
+			}else{
+				_this.target.closest('.timetable_item').querySelector('.comment_list').classList.toggle('folded');
+			}
+		};
 	}
 
 	if(itemData.brank){
