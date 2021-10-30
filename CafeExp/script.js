@@ -292,13 +292,11 @@ chrome.runtime.onMessage.addListener((request) => {
 		);
 
 		setTimeout(() => {
-			console.time('a');
 			const nowtime = Date.now(), 
 				loadedtime = parseInt(music_data.actionTrackId.split('_')[1]), 
 				song_position = (1 - parseFloat(document.querySelector('#song_position .position').style.width.slice(0, -1))/ 100) * music_data.lengthInSeconds * 1000, 
 				timestamp_time = loadedtime - song_position,
 				qsReasonFirst = document.querySelector('#reasons li:first-child');
-			console.log('ReasonFirst', qsReasonFirst);
 
 			if(!timetableDic[0] || timetableDic[0].title !== music_data.title){
 				timetableDic.unshift({
@@ -343,6 +341,7 @@ chrome.runtime.onMessage.addListener((request) => {
 				musicEndtime = timestamp_time + music_data.lengthInSeconds * 1000;
 				localStorage.endtime = musicEndtime + '';
 			}
+
 			document.querySelectorAll('#timetable_list .timetable_item').forEach((element, index) => {
 				if(index < timetableMax){
 					if(!!index){
@@ -366,7 +365,6 @@ chrome.runtime.onMessage.addListener((request) => {
 					element.remove();
 				}
 			});
-			console.timeEnd('a');
 		}, waitTime);
 	}
 });
