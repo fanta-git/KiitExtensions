@@ -197,19 +197,19 @@
   align-items: center;
   justify-content: center;
 }
-#timetable_list .timetable_item:first-child .onair {
-  display: flex;
+#timetable_list .timetable_item .onair {
+  display: none;
 }
-#timetable_list .onair {
+#timetable_list .timetable_item.onair_now .onair {
   background: red;
-  display: none;
-}
-#timetable_list .timetable_item:first-child .timestamp {
-  display: none;
+  display: flex;
 }
 #timetable_list .timestamp {
   background: #666;
   display: flex;
+}
+#timetable_list .timetable_item.onair_now .timestamp {
+  display: none;
 }
 #timetable_list .reason {
   display: flex;

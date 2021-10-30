@@ -3,6 +3,7 @@
 const timetableMax = 100,
 	waitTime = 2000,
 	intervalTime = 1000,
+	endtimeTolerance = 10000,
 	colorThreshold = 6,
 	commmentFold = true,
 	displayReasonAll = true;
@@ -70,7 +71,9 @@ const reasonTextPlaylistTemplate = new Range().createContextualFragment(`
 	<a class="user_name" href="" target="_blank"></a>さんの<b class="playlist">プレイリスト</b>の曲です
 `);
 
-let timetableDic = JSON.parse(localStorage.timetable || '[]');
+let timetableDic = JSON.parse(localStorage.timetable || '[]'),
+	musicEndtime = parseInt(localStorage.endtime),
+	notice_flag = localStorage.ntc_flag === 'true';
 
 window.onload = () => {
 	document.querySelector('#now_playing_info .source').insertAdjacentHTML('afterend', `
@@ -78,7 +81,7 @@ window.onload = () => {
 			<i class="material-icons">info</i>
 		</div>
 		<div class="ntc_toggle" id="ntc_toggle">
-			<i class="material-icons">${localStorage.ntc_flag === 'true' ? 'notifications_active' : 'notifications_off'}</i>
+			<i class="material-icons">${notice_flag ? 'notifications_active' : 'notifications_off'}</i>
 		</div>
 	`);
 
@@ -153,8 +156,8 @@ window.onload = () => {
 
 	document.querySelector('#ntc_toggle').onclick = () => {
 		Notification.requestPermission();
-		localStorage.ntc_flag = (localStorage.ntc_flag === 'true' ? 'false' : 'true');
-		document.querySelector('#ntc_toggle .material-icons').innerText = (localStorage.ntc_flag === 'true'? 'notifications_active' : 'notifications_off');
+		localStorage.ntc_flag = (notice_flag = !notice_flag) ? 'true' : 'false';
+		document.querySelector('#ntc_toggle .material-icons').innerText = (notice_flag ? 'notifications_active' : 'notifications_off');
 	};
 
 	for(const element of qsaMenuLi){
@@ -170,6 +173,7 @@ window.onload = () => {
 			localStorage.timetable = '[]';
 			localStorage.endtime = '';
 			timetableDic = [];
+			musicEndtime = 0;
 			for(const element of document.querySelectorAll('#timetable_list .timetable_item')){
 				element.remove();
 			};
@@ -180,47 +184,53 @@ window.onload = () => {
 		let obsComment = {};
 		setInterval(() => {
 			if(!!timetableDic[0]){
-				const qsaUser = document.querySelectorAll('#cafe_space .user'),
-					qsTimetableFirst = document.querySelector('#timetable_list .timetable_item:first-child');
-				let newData = {};
-				qsaUser.forEach(e => {
-					e.classList.forEach(v => {
-						newData[v] = (newData[v] || 0) + 1;
+				if(Date.now() < musicEndtime + endtimeTolerance){
+					const qsaUser = document.querySelectorAll('#cafe_space .user'),
+						qsTimetableFirst = document.querySelector('#timetable_list .timetable_item:first-child');
+					let newData = {};
+					qsaUser.forEach(e => {
+						e.classList.forEach(v => {
+							newData[v] = (newData[v] || 0) + 1;
+						});
 					});
-				});
-				for(const element of qsaUser){
-					const commentData = {
-						iconUrl: element.querySelector('.thumbnail').style.backgroundImage.split('"')[1],
-						text: element.querySelector('.comment').textContent,
-						userId: element.dataset.user_id,
-						userName: element.querySelector('.user_nickname').textContent
-					};
-					if(obsComment[commentData.userId] !== undefined && !!commentData.text && obsComment[commentData.userId] !== commentData.text){
-						if(localStorage.ntc_flag === 'true' && !document.hasFocus()){
-							Notification.requestPermission().then(() => {
-								new Notification(commentData.text,{ body : commentData.userName });
-							});
+					for(const element of qsaUser){
+						const commentData = {
+							iconUrl: element.querySelector('.thumbnail').style.backgroundImage.split('"')[1],
+							text: element.querySelector('.comment').textContent,
+							userId: element.dataset.user_id,
+							userName: element.querySelector('.user_nickname').textContent
+						};
+						if(obsComment[commentData.userId] !== undefined && !!commentData.text && obsComment[commentData.userId] !== commentData.text){
+							if(notice_flag && !document.hasFocus()){
+								Notification.requestPermission().then(() => {
+									new Notification(commentData.text,{ body : commentData.userName });
+								});
+							}
+							qsTimetableFirst.querySelector('.comment_list').append(timetableCommentCreate(commentData));
+							qsTimetableFirst.querySelector('.comment_list').classList.remove('empty');
+							timetableDic[0].commentList.push(commentData);
+							localStorage.timetable = JSON.stringify(timetableDic);
 						}
-						qsTimetableFirst.querySelector('.comment_list').append(timetableCommentCreate(commentData));
-						qsTimetableFirst.querySelector('.comment_list').classList.remove('empty');
-						timetableDic[0].commentList.push(commentData);
-						localStorage.timetable = JSON.stringify(timetableDic);
+						obsComment[commentData.userId] = commentData.text;
 					}
-					obsComment[commentData.userId] = commentData.text;
-				}
-				if(!!newData.gesture_rotate && timetableDic[0].gesture_rotate < newData.gesture_rotate){
-					if(!timetableDic[0].gesture_rotate){
-						qsTimetableFirst.querySelector('.rotate').classList.remove('invisible');
+					if(!!newData.gesture_rotate && timetableDic[0].gesture_rotate < newData.gesture_rotate){
+						if(!timetableDic[0].gesture_rotate){
+							qsTimetableFirst.querySelector('.rotate').classList.remove('invisible');
+						}
+						qsTimetableFirst.querySelector('.rotate > .count').textContent = newData.gesture_rotate;
+						timetableDic[0].gesture_rotate = newData.gesture_rotate;
 					}
-					qsTimetableFirst.querySelector('.rotate > .count').textContent = newData.gesture_rotate;
-					timetableDic[0].gesture_rotate = newData.gesture_rotate;
-				}
-				if(!!newData.new_fav && timetableDic[0].new_fav < newData.new_fav){
-					if(!timetableDic[0].new_fav){
-						qsTimetableFirst.querySelector('.new_fav').classList.remove('invisible');
+					if(!!newData.new_fav && timetableDic[0].new_fav < newData.new_fav){
+						if(!timetableDic[0].new_fav){
+							qsTimetableFirst.querySelector('.new_fav').classList.remove('invisible');
+						}
+						qsTimetableFirst.querySelector('.new_fav > .count').textContent = newData.new_fav;
+						timetableDic[0].new_fav = newData.new_fav;
 					}
-					qsTimetableFirst.querySelector('.new_fav > .count').textContent = newData.new_fav;
-					timetableDic[0].new_fav = newData.new_fav;
+				}else{
+					document.querySelectorAll('#timetable_list .timetable_item.onair_now').forEach(e => {
+						e.classList.remove('onair_now');
+					});
 				}
 			}
 		}, intervalTime);
@@ -231,6 +241,13 @@ chrome.runtime.onMessage.addListener((request) => {
 	if(request.type === 'music_data'){
 		const music_data = JSON.parse(request.data);
 		console.log(music_data);
+
+		if(notice_flag && !document.hasFocus()){
+			Notification.requestPermission().then(() => {
+				new Notification(music_data.title);
+			});
+		}
+
 		document.querySelector('#viewCounter').innerText = parseInt(music_data.viewCounter).toLocaleString();
 		document.querySelector('#mylistCounter').innerText = parseInt(music_data.mylistCounter).toLocaleString();
 		document.querySelector('#commentCounter').innerText = parseInt(music_data.thread.commentCounter).toLocaleString();
@@ -276,16 +293,16 @@ chrome.runtime.onMessage.addListener((request) => {
 
 		setTimeout(() => {
 			const nowtime = Date.now(), 
-				loadedtime = new Date(parseInt(music_data.actionTrackId.split('_')[1])), 
-				song_position = new Date((1 - parseFloat(document.querySelector('#song_position .position').style.width.slice(0, -1))/ 100) * music_data.lengthInSeconds * 1000), 
-				timestamp_time = new Date(loadedtime.getTime() - song_position.getTime()),
+				loadedtime = parseInt(music_data.actionTrackId.split('_')[1]), 
+				song_position = (1 - parseFloat(document.querySelector('#song_position .position').style.width.slice(0, -1))/ 100) * music_data.lengthInSeconds * 1000, 
+				timestamp_time = loadedtime - song_position,
 				qsReasonFirst = document.querySelector('#reasons li:first-child');
 			console.log('ReasonFirst', qsReasonFirst);
 			let timetableListNode = document.querySelector('#timetable_list').cloneNode(true);
 
 			if(!timetableDic[0] || timetableDic[0].title !== music_data.title){
 				timetableDic.unshift({
-					timestamp: timestamp_time.getTime(),
+					timestamp: timestamp_time,
 					thumbnailUrl: music_data.thumbnailUrl,
 					title: music_data.title,
 					artist: document.querySelector('#now_playing_info .artist span').textContent,
@@ -300,7 +317,7 @@ chrome.runtime.onMessage.addListener((request) => {
 						text: Array.from(qsReasonFirst.querySelectorAll('.comment span'), e => e.textContent),
 					}, 
 					commentList: [],
-					brank: !!localStorage.endtime && parseInt(localStorage.endtime) + 10000 < timestamp_time.getTime(),
+					brank: !!musicEndtime && musicEndtime + endtimeTolerance < timestamp_time,
 				});
 
 				const qsReasonKind = qsReasonFirst.querySelector('.text a:nth-child(2), .text b');
@@ -322,18 +339,17 @@ chrome.runtime.onMessage.addListener((request) => {
 
 				timetableListNode.prepend(timetableItemCreate(timetableDic[0]));
 
-				if(localStorage.ntc_flag === 'true' && !document.hasFocus()){
-					Notification.requestPermission().then(() => {
-						new Notification(music_data.title);
-					});
-				}
-
 				localStorage.timetable = JSON.stringify(timetableDic);
-				localStorage.endtime = (timestamp_time.getTime() + (music_data.lengthInSeconds * 1000)) + '';
+				musicEndtime = timestamp_time + music_data.lengthInSeconds * 1000;
+				localStorage.endtime = musicEndtime + '';
 			}
-
 			timetableListNode.querySelectorAll('.timetable_item').forEach((element, index) => {
 				if(index < timetableMax){
+					if(!!index){
+						element.classList.remove('onair_now');
+					}else{
+						element.classList.add('onair_now')
+					}
 					if(!!element.querySelector('.timestamp')){
 						element.querySelector('.timestamp').innerText = ((lag) => {
 							if(lag < 60){
@@ -351,11 +367,11 @@ chrome.runtime.onMessage.addListener((request) => {
 							if((_this.ctrlKey && !_this.metaKey) || (!_this.ctrlKey && _this.metaKey)){
 								const elementFolded = _this.target.closest('.timetable_item').querySelector('.comment_list').classList.contains('folded');
 								if(elementFolded){
-									document.querySelectorAll('#timetable_list .comment_list').forEach(e => {
+									document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
 										e.classList.remove('folded');
 									});
 								}else{
-									document.querySelectorAll('#timetable_list .comment_list').forEach(e => {
+									document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
 										e.classList.add('folded');
 									});
 								}

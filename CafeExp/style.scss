@@ -225,22 +225,22 @@ $commentFade: .2s;
         justify-content: center;
     }
 
-    .timetable_item:first-child .onair {
-        display: flex;
+    .timetable_item .onair {
+        display: none;
     }
 
-    .onair {
+    .timetable_item.onair_now .onair {
         background: red;
-        display: none;
-    }
-
-    .timetable_item:first-child .timestamp {
-        display: none;
+        display: flex;
     }
 
     .timestamp {
         background: #666;
         display: flex;
+    }
+
+    .timetable_item.onair_now .timestamp {
+        display: none;
     }
 
     .reason{
