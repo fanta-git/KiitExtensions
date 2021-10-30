@@ -332,16 +332,21 @@
   background-position: center center;
   border-radius: 50%;
 }
-#timetable_list .comment_list .comment_text {
+#timetable_list .comment_list .comment_text, #timetable_list .comment_list .reason_comment {
   display: block;
   width: 100%;
   border-radius: .3em;
   font-size: 1.1em;
-  background: #fffacd;
   padding: 8px;
   color: black;
   line-height: 1.4em;
   position: relative;
+}
+#timetable_list .comment_list .comment_text {
+  background: #fffacd;
+}
+#timetable_list .comment_list .reason_comment_text {
+  background: lightcyan;
 }
 #timetable_list .comment_list .comment_text::before {
   content: '';
@@ -382,7 +387,7 @@
 #timetable_list .comment_list:not(.folded) .comment {
   transition: 0.3s 0.2s;
 }
-#timetable_list .comment_list:not(.folded), #timetable_list .comment_list:not(.folded) .comment * {
+#timetable_list .comment_list:not(.folded), #timetable_list .comment_list:not(.folded) .comment *, #timetable_list .comment_list:not(.folded) .comment_text span {
   transition: 0.3s 0s;
 }
 #timetable_list .comment_list.folded {
@@ -393,7 +398,7 @@
   transition: 0.2s 0s;
   opacity: 0;
 }
-#timetable_list .comment_list.folded, #timetable_list .comment_list.folded .comment * {
+#timetable_list .comment_list.folded, #timetable_list .comment_list.folded .comment *, #timetable_list .comment_list.folded .comment_text span {
   transition: 0.3s 0.2s;
 }
 #timetable_list .comment_list.folded .comment_text, #timetable_list .comment_list.folded .comment_text::before {
@@ -401,6 +406,7 @@
   font-size: 0;
   border-width: 0;
   row-gap: 0;
+  min-height: 0;
 }
 #timetable_list .comment_list.folded .comment_icon {
   height: 0;

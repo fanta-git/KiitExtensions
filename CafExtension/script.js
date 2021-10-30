@@ -150,14 +150,14 @@ window.onload = () => {
 		qsRdIcon = document.querySelector('#rd_toggle .material-icons');
 
 	document.querySelector('#rd_toggle').onclick = () => {
-		qsRdIcon.textContent = (qsRdIcon.innerText === 'info') ? 'people' : 'info';
+		qsRdIcon.textContent = (qsRdIcon.textContent === 'info') ? 'people' : 'info';
 		qsCafe.classList.toggle('view_music_data');
 	};
 
 	document.querySelector('#ntc_toggle').onclick = () => {
 		Notification.requestPermission();
 		localStorage.ntc_flag = (notice_flag = !notice_flag) ? 'true' : 'false';
-		document.querySelector('#ntc_toggle .material-icons').innerText = (notice_flag ? 'notifications_active' : 'notifications_off');
+		document.querySelector('#ntc_toggle .material-icons').textContent = (notice_flag ? 'notifications_active' : 'notifications_off');
 	};
 
 	for(const element of qsaMenuLi){
@@ -349,7 +349,7 @@ chrome.runtime.onMessage.addListener((request) => {
 						element.classList.add('onair_now')
 					}
 					if(!!element.querySelector('.timestamp')){
-						element.querySelector('.timestamp').innerText = ((lag) => {
+						element.querySelector('.timestamp').textContent = ((lag) => {
 							if(lag < 60){
 								return 'すこし前';
 							}else if(lag < 3600){
@@ -370,7 +370,7 @@ chrome.runtime.onMessage.addListener((request) => {
 
 function timetableItemCreate(itemData){
 	let newNode = document.createDocumentFragment();
-	newNode.appendChild(timetableItemTemplate.cloneNode(true));
+	newNode.append(timetableItemTemplate.cloneNode(true));
 	newNode.querySelector('.thumbnail').style.backgroundImage = `url("${itemData.thumbnailUrl}")`;
 	newNode.querySelector('.reason .icon').style.backgroundImage = `url("${itemData.reason.iconUrl}")`;
 	switch(itemData.reason.listUrl){
@@ -405,10 +405,23 @@ function timetableItemCreate(itemData){
 		newNode.querySelector('.new_fav').classList.remove('invisible');
 		newNode.querySelector('.new_fav > .count').textContent = itemData.new_fav;
 	}
+	console.log(itemData.title, itemData.reason.text);
+	if(!!itemData.reason.text[0]){
+		newNode.querySelector('.comment_list').classList.remove('empty');
+		let reasonComment = timetableCommentTemplate.cloneNode(true),
+			reasonText = '';
+		reasonComment.querySelector('.comment_text').classList.add('reason_comment_text');
+		reasonComment.querySelector('.comment_icon').style.backgroundImage = `url("${itemData.reason.iconUrl}")`;
+		itemData.reason.text.forEach((v, i) => {
+			reasonText += ((!!i ? '<br>' : '') + v);
+		});
+		reasonComment.querySelector('.reason_comment_text').innerText = reasonText;
+		newNode.querySelector('.comment_list').append(reasonComment);
+	}
 	if(!!itemData.commentList[0]){
 		newNode.querySelector('.comment_list').classList.remove('empty');
 		for(const element of itemData.commentList){
-			newNode.querySelector('.comment_list').appendChild(timetableCommentCreate(element));
+			newNode.querySelector('.comment_list').append(timetableCommentCreate(element));
 		}
 	}
 	if(!!newNode.querySelector('.comment_tail')){
@@ -431,7 +444,7 @@ function timetableItemCreate(itemData){
 	}
 
 	if(itemData.brank){
-		newNode.appendChild(timetableBrankTemplate.cloneNode(true));
+		newNode.append(timetableBrankTemplate.cloneNode(true));
 	}
 	return newNode;
 }
