@@ -344,7 +344,7 @@ $commentFade: .2s;
     }
 
     i.in{
-        transform: translate(-.5px, 0px) scale(.5);
+        transform: scale(.5);
     }
 
     i.out{
@@ -401,16 +401,17 @@ $commentFade: .2s;
             color: black;
             line-height: 1.4em;
             position: relative;
+            background: #fffacd;
         }
 
-        .comment_text {
-            background: #fffacd;
+        .comment_text.presenter {
+            background: pink;
         }
 
         .reason_comment_text {
             background: lightcyan;
         }
-        
+
         .comment_text::before {
             content: '';
             box-sizing: border-box;
