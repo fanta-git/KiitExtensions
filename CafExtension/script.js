@@ -85,16 +85,26 @@ let musicEndtime = parseInt(localStorage.endtime),
 window.onload = () => {
 	setMenuDom();
 
-	setTimeout(() => {
-		chrome.storage.onChanged.addListener((changes, namespace) => {
-			for (const [key, {oldValue, newValue}] of Object.entries(changes)) {
-				if(key === 'music_data' && newValue.videoId){
-					pushTimetable(newValue);
-				}
-			}
-		});
-		setInterval(observeUserCondition, settings.intervalTime)
-	}, settings.waitTime);
+	// setTimeout(() => {
+	// 	chrome.storage.onChanged.addListener((changes, namespace) => {
+	// 		for (const [key, {oldValue, newValue}] of Object.entries(changes)) {
+	// 			if(key === 'music_data' && newValue.videoId){
+	// 				pushTimetable(newValue);
+	// 			}
+	// 		}
+	// 	});
+	// 	setInterval(observeUserCondition, settings.intervalTime)
+	// }, settings.waitTime);
+};
+
+async function callApi(url, queryParam = {}) {
+	if(Object.keys(queryParam).length){
+		url += '?' + new URLSearchParams(queryParam);
+	}
+
+	const res = await fetch(url);
+
+	return await res.json();
 };
 
 function setMenuDom(){
@@ -145,27 +155,17 @@ function setMenuDom(){
 				</div>
 			</div>
 			<div class="inner">
-				<h2>選曲履歴</h2>
+				<h2>選曲履歴100</h2>
 				<div class="exp">
-					これまで流れた曲とコメントを最大${settings.timetableMax}曲分まで確認することができます<br>
-					あなたがKiiteCafeを開いていない時の履歴を確認することはできません
-				</div>
-				<div id="timetable_del_wrapper">
-					<div id="timetable_del">履歴を全て削除</div>
+					Kiite Cafe にログインしているユーザの、プレイリストやお気に入り、イチ推しリストから自動的に選曲されます<br>
+					コメント履歴はあなたがKiite Cafeにログインしている間しか記録されません
 				</div>
 				<div id="timetable_list"></div>
 			</div>
 		</div>
 	`);
 
-	if(!!timetableDic.length){
-		const timetableListNode = document.createDocumentFragment();
-		for(const element of timetableDic){
-			timetableListNode.append(timetableItemCreate(element));
-		}
-		document.querySelector('#timetable_list').append(timetableListNode);
-		updateTimecounter(Date.now());
-	}
+	setTimetable();
 
 	const qsCafe = document.querySelector('#cafe'),
 		qsaMenuLi = document.querySelectorAll('#cafe_menu > ul > li'),
@@ -190,301 +190,318 @@ function setMenuDom(){
 			qsCafe.classList.add(`view_${element.dataset.val}`);
 		};
 	};
-	
-	document.querySelector('#timetable_del').onclick = () => {
-		if(confirm('本当に再生履歴を全て削除しますか？')){
-			localStorage.timetable = '[]';
-			localStorage.endtime = '';
-			timetableDic.length = 0;
-			musicEndtime = 0;
-			chrome.storage.local.remove('music_data');
-			for(const element of document.querySelectorAll('#timetable_list .timetable_item')){
-				element.remove();
-			};
-		}
-	};
 }
 
-function pushTimetable(music_data){
-	console.log(music_data);
+function setTimetable(){
+	callApi('https://cafe.kiite.jp/api/cafe/timetable', {with_comment: 1, limit: 100})
+		.then(res => timetableItemCreate(...res))
+		.then(timetable => document.querySelector('#timetable_list').append(timetable));
+	// updateTimecounter(Date.now());
+}
 
-	if(notice_flag && !document.hasFocus()){
-		Notification.requestPermission().then(() => {
-			new Notification(music_data.title);
-		});
-	}
+// function pushTimetable(music_data){
+// 	console.log(music_data);
 
-	document.querySelector('#viewCounter').textContent = parseInt(music_data.viewCounter).toLocaleString();
-	document.querySelector('#mylistCounter').textContent = parseInt(music_data.mylistCounter).toLocaleString();
-	document.querySelector('#commentCounter').textContent = parseInt(music_data.thread.commentCounter).toLocaleString();
-	document.querySelector('#music_description').innerHTML = (
-		music_data.description
-			.replace(/https?:\/\/[\w!?/+\-~=;.,*&@#$%()'[\]]+/g, '<a href="$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w@])(mylist|user)\/\d+/g,'<a href="https://www.nicovideo.jp/$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w@])(sm|nm)\d+/g, '<a href="https://www.nicovideo.jp/watch/$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w@])nc\d+/g, '<a href="https://commons.nicovideo.jp/material/$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w@])co\d+/g, '<a href="https://com.nicovideo.jp/community/$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w])@(\w+)/g, '<a href="https://twitter.com/$1" target="_blank">$&</a>')
-			.replace(/#[0-9a-fA-F]{6}/g, ((match) => {
-				let [r, g, b] = [parseInt(match.substr(1, 2), 16), parseInt(match.substr(3, 2), 16), parseInt(match.substr(5, 2), 16)];
-				const blightRatio = (_r, _g, _b) => {
-					[_r, _g, _b] = [Math.min(_r / 255, 1), Math.min(_g / 255, 1), Math.min(_b / 255, 1)];
+// 	if(notice_flag && !document.hasFocus()){
+// 		Notification.requestPermission().then(() => {
+// 			new Notification(music_data.title);
+// 		});
+// 	}
 
-					return (
-						(_r <= .3298 ? _r / 12.92 : ((_r + .055) / 1.055) ** 2.4) * .2126 +
-						(_g <= .3298 ? _g / 12.92 : ((_g + .055) / 1.055) ** 2.4) * .7512 +
-						(_b <= .3298 ? _b / 12.92 : ((_b + .055) / 1.055) ** 2.4) * .0722 + 
-						.05
-					)/ .05
-				};
+// 	document.querySelector('#viewCounter').textContent = parseInt(music_data.viewCounter).toLocaleString();
+// 	document.querySelector('#mylistCounter').textContent = parseInt(music_data.mylistCounter).toLocaleString();
+// 	document.querySelector('#commentCounter').textContent = parseInt(music_data.thread.commentCounter).toLocaleString();
+// 	document.querySelector('#music_description').innerHTML = (
+// 		music_data.description
+// 			.replace(/https?:\/\/[\w!?/+\-~=;.,*&@#$%()'[\]]+/g, '<a href="$&" target="_blank">$&</a>')
+// 			.replace(/(?<![\/\w@])(mylist|user)\/\d+/g,'<a href="https://www.nicovideo.jp/$&" target="_blank">$&</a>')
+// 			.replace(/(?<![\/\w@])(sm|nm)\d+/g, '<a href="https://www.nicovideo.jp/watch/$&" target="_blank">$&</a>')
+// 			.replace(/(?<![\/\w@])nc\d+/g, '<a href="https://commons.nicovideo.jp/material/$&" target="_blank">$&</a>')
+// 			.replace(/(?<![\/\w@])co\d+/g, '<a href="https://com.nicovideo.jp/community/$&" target="_blank">$&</a>')
+// 			.replace(/(?<![\/\w])@(\w+)/g, '<a href="https://twitter.com/$1" target="_blank">$&</a>')
+// 			.replace(/#[0-9a-fA-F]{6}/g, ((match) => {
+// 				let [r, g, b] = [parseInt(match.substr(1, 2), 16), parseInt(match.substr(3, 2), 16), parseInt(match.substr(5, 2), 16)];
+// 				const blightRatio = (_r, _g, _b) => {
+// 					[_r, _g, _b] = [Math.min(_r / 255, 1), Math.min(_g / 255, 1), Math.min(_b / 255, 1)];
 
-				if(r === g && g === b){
-					[r, g, b] = [255 - r, 255 - g, 255 - b];
-				}else if(blightRatio(r, g, b) < settings.colorThreshold){
-					[r, g, b] = [r || 1, g || 1, b || 1];
-					let top = 255 / Math.min(r, g, b), bottom = 1,mag = (top + bottom)/ 2;
+// 					return (
+// 						(_r <= .3298 ? _r / 12.92 : ((_r + .055) / 1.055) ** 2.4) * .2126 +
+// 						(_g <= .3298 ? _g / 12.92 : ((_g + .055) / 1.055) ** 2.4) * .7512 +
+// 						(_b <= .3298 ? _b / 12.92 : ((_b + .055) / 1.055) ** 2.4) * .0722 + 
+// 						.05
+// 					)/ .05
+// 				};
 
-					for(let i = 0; i < 8; i++){
-						if(blightRatio(r * mag, g * mag, b * mag) < settings.colorThreshold){
-							bottom = mag;
-						}else{
-							top = mag;
-						}
-						mag = (top + bottom)/ 2;
-					}
-					[r, g, b] = [Math.min(Math.round(r * mag), 255), Math.min(Math.round(g * mag), 255), Math.min(Math.round(b * mag), 255)]
+// 				if(r === g && g === b){
+// 					[r, g, b] = [255 - r, 255 - g, 255 - b];
+// 				}else if(blightRatio(r, g, b) < settings.colorThreshold){
+// 					[r, g, b] = [r || 1, g || 1, b || 1];
+// 					let top = 255 / Math.min(r, g, b), bottom = 1,mag = (top + bottom)/ 2;
+
+// 					for(let i = 0; i < 8; i++){
+// 						if(blightRatio(r * mag, g * mag, b * mag) < settings.colorThreshold){
+// 							bottom = mag;
+// 						}else{
+// 							top = mag;
+// 						}
+// 						mag = (top + bottom)/ 2;
+// 					}
+// 					[r, g, b] = [Math.min(Math.round(r * mag), 255), Math.min(Math.round(g * mag), 255), Math.min(Math.round(b * mag), 255)]
+// 				}
+
+// 				return('#' + r.toString(16).padStart(2, '0') + g.toString(16).padStart(2, '0') + b.toString(16).padStart(2, '0'));
+// 			}))
+// 	);
+
+// 	setTimeout(() => {
+// 		const nowtime = Date.now(), 
+// 			loadedtime = parseInt(music_data.actionTrackId.split('_')[1]), 
+// 			song_position = (1 - parseFloat(document.querySelector('#song_position .position').style.width.slice(0, -1))/ 100) * music_data.lengthInSeconds * 1000, 
+// 			timestamp_time = loadedtime - song_position,
+// 			qsReasonFirst = document.querySelector('#reasons li:first-child');
+
+// 		if(timetableDic[0]?.title !== music_data.title){
+// 			timetableDic.unshift({
+// 				timestamp: timestamp_time,
+// 				thumbnailUrl: music_data.thumbnailUrl,
+// 				title: music_data.title,
+// 				artist: document.querySelector('#now_playing_info .artist span').textContent,
+// 				videoId: music_data.videoId,
+// 				gesture_rotate: 0,
+// 				new_fav: 0,
+// 				reason: {
+// 					iconUrl: qsReasonFirst.querySelector('.user_icon').style.backgroundImage.split('"')[1],
+// 					userNickname: qsReasonFirst.querySelector('.text a:nth-child(1)').textContent,
+// 					userUrlId: qsReasonFirst.querySelector('.text a:nth-child(1)').href.split('/')[4],
+// 					listUrl: '',
+// 					text: Array.from(qsReasonFirst.querySelectorAll('.comment span'), e => e.textContent),
+// 				}, 
+// 				commentList: [],
+// 				brank: !!musicEndtime && musicEndtime + settings.endtimeTolerance < timestamp_time,
+// 			});
+
+// 			const qsReasonKind = qsReasonFirst.querySelector('.text a:nth-child(2), .text b');
+// 			switch(qsReasonKind.textContent){
+// 				case 'イチ推しリスト':
+// 					timetableDic[0].reason.listUrl = qsReasonKind.href.split('/')[4];
+// 					break;
+// 				case 'お気に入り':
+// 					timetableDic[0].reason.listUrl = '__faves__';
+// 					break;
+// 				case 'プレイリスト':
+// 					timetableDic[0].reason.listUrl = '__playlist__';
+// 					break;
+// 				case '特別メニュー':
+// 					timetableDic[0].reason.listUrl = '__specialmenu__';
+// 			}
+
+// 			if(settings.timetableMax < timetableDic.length){
+// 				timetableDic.splice(settings.timetableMax);
+// 			}
+
+// 			document.querySelector('#timetable_list').prepend(timetableItemCreate(timetableDic[0]));
+
+// 			localStorage.timetable = JSON.stringify(timetableDic);
+// 			musicEndtime = timestamp_time + music_data.lengthInSeconds * 1000;
+// 			localStorage.endtime = musicEndtime + '';
+// 		}
+
+// 		updateTimecounter(nowtime);
+// 	}, settings.waitTime);
+// }
+
+// function observeUserCondition(){
+// 	if(!!timetableDic.length){
+// 		if(Date.now() < musicEndtime + settings.endtimeTolerance){
+// 			const qsaUser = document.querySelectorAll('#cafe_space .user'),
+// 				qsTimetableFirst = document.querySelector('#timetable_list .timetable_item:first-child');
+// 			const newData = {};
+// 			qsaUser.forEach(e => {
+// 				e.classList.forEach(v => {
+// 					newData[v] = (newData[v] ?? 0) + 1;
+// 				});
+// 			});
+// 			for(const element of qsaUser){
+// 				const commentData = {
+// 					iconUrl: element.querySelector('.thumbnail').style.backgroundImage.split('"')[1],
+// 					text: element.querySelector('.comment').textContent,
+// 					userId: element.dataset.user_id,
+// 					userName: element.querySelector('.user_nickname').textContent, 
+// 					presenter: element.classList.contains('presenter'), 
+// 				};
+// 				if(obsComment[commentData.userId] !== undefined && !!commentData.text && obsComment[commentData.userId] !== commentData.text){
+// 					if(notice_flag && !document.hasFocus()){
+// 						Notification.requestPermission().then(() => {
+// 							new Notification(commentData.text,{ body : commentData.userName });
+// 						});
+// 					}
+// 					qsTimetableFirst.querySelector('.comment_list').append(timetableCommentCreate(commentData));
+// 					qsTimetableFirst.querySelector('.comment_list').classList.remove('empty');
+// 					timetableDic[0].commentList.push(commentData);
+// 					localStorage.timetable = JSON.stringify(timetableDic);
+// 				}
+// 				obsComment[commentData.userId] = commentData.text;
+// 			}
+// 			if(timetableDic[0].gesture_rotate < newData?.gesture_rotate){
+// 				if(!timetableDic[0].gesture_rotate){
+// 					qsTimetableFirst.querySelector('.rotate').classList.remove('invisible');
+// 				}
+// 				qsTimetableFirst.querySelector('.rotate > .count').textContent = newData.gesture_rotate;
+// 				timetableDic[0].gesture_rotate = newData.gesture_rotate;
+// 			}
+// 			if(timetableDic[0].new_fav < newData?.new_fav){
+// 				if(!timetableDic[0].new_fav){
+// 					qsTimetableFirst.querySelector('.new_fav').classList.remove('invisible');
+// 				}
+// 				qsTimetableFirst.querySelector('.new_fav > .count').textContent = newData.new_fav;
+// 				timetableDic[0].new_fav = newData.new_fav;
+// 			}
+// 		}else{
+// 			document.querySelectorAll('#timetable_list .timetable_item.onair_now').forEach(e => {
+// 				e.classList.remove('onair_now');
+// 			});
+// 		}
+// 	}
+// }
+
+// function updateTimecounter(nowtime){
+// 	document.querySelectorAll('#timetable_list .timetable_item').forEach((element, index) => {
+// 		if(index < settings.timetableMax){
+// 			if(!!index){
+// 				element.classList.remove('onair_now');
+// 			}else{
+// 				element.classList.add('onair_now')
+// 			}
+// 			if(!!element.querySelector('.timestamp')){
+// 				element.querySelector('.timestamp').textContent = ((lag) => {
+// 					if(lag < 60){
+// 						return ~~(lag) + '秒前';
+// 					}else if(lag < 3600){
+// 						return ~~(lag / 60) + '分前';
+// 					}else if(lag < 86400){
+// 						return ~~(lag / 3600) + '時間前';
+// 					}
+// 					return ~~(lag / 86400) + '日前';
+// 				})((nowtime - element.dataset.timestamp) / 1000);
+// 			}
+// 		}else{
+// 			element.remove();
+// 		}
+// 	});
+// }
+
+const userData = {};
+
+async function timetableItemCreate(...dataArr){
+	const timetable = document.createDocumentFragment();
+	const selection_id = [];
+	for(const music_data of dataArr){
+		const newNode = document.createDocumentFragment();
+		const reason = music_data.reasons.find(e => e.user_id === music_data.request_user_ids[0]);
+		//                                                            ^music_data.reasons[0].user_idも候補
+
+		// const userData = callApi("https://cafe.kiite.jp/api/kiite_users", {user_ids: reason.user_id});
+
+		selection_id.push(music_data.id);
+		newNode.append(timetableItemTemplate.cloneNode(true));
+		
+		newNode.querySelector('.thumbnail').style.backgroundImage = `url("${music_data.thumbnail.replace('http://', 'https://')}")`;
+		switch(reason.type){
+			case 'favorite':
+				newNode.querySelector('.reason .text').append(reasonTextFavTemplate.cloneNode(true));
+				if(!settings.displayReasonAll){
+					newNode.querySelector('.reason').classList.add('invisible');
 				}
-
-				return('#' + r.toString(16).padStart(2, '0') + g.toString(16).padStart(2, '0') + b.toString(16).padStart(2, '0'));
-			}))
-	);
-
-	setTimeout(() => {
-		const nowtime = Date.now(), 
-			loadedtime = parseInt(music_data.actionTrackId.split('_')[1]), 
-			song_position = (1 - parseFloat(document.querySelector('#song_position .position').style.width.slice(0, -1))/ 100) * music_data.lengthInSeconds * 1000, 
-			timestamp_time = loadedtime - song_position,
-			qsReasonFirst = document.querySelector('#reasons li:first-child');
-
-		if(timetableDic[0]?.title !== music_data.title){
-			timetableDic.unshift({
-				timestamp: timestamp_time,
-				thumbnailUrl: music_data.thumbnailUrl,
-				title: music_data.title,
-				artist: document.querySelector('#now_playing_info .artist span').textContent,
-				videoId: music_data.videoId,
-				gesture_rotate: 0,
-				new_fav: 0,
-				reason: {
-					iconUrl: qsReasonFirst.querySelector('.user_icon').style.backgroundImage.split('"')[1],
-					userNickname: qsReasonFirst.querySelector('.text a:nth-child(1)').textContent,
-					userUrlId: qsReasonFirst.querySelector('.text a:nth-child(1)').href.split('/')[4],
-					listUrl: '',
-					text: Array.from(qsReasonFirst.querySelectorAll('.comment span'), e => e.textContent),
-				}, 
-				commentList: [],
-				brank: !!musicEndtime && musicEndtime + settings.endtimeTolerance < timestamp_time,
-			});
-
-			const qsReasonKind = qsReasonFirst.querySelector('.text a:nth-child(2), .text b');
-			switch(qsReasonKind.textContent){
-				case 'イチ推しリスト':
-					timetableDic[0].reason.listUrl = qsReasonKind.href.split('/')[4];
-					break;
-				case 'お気に入り':
-					timetableDic[0].reason.listUrl = '__faves__';
-					break;
-				case 'プレイリスト':
-					timetableDic[0].reason.listUrl = '__playlist__';
-					break;
-				case '特別メニュー':
-					timetableDic[0].reason.listUrl = '__specialmenu__';
-			}
-
-			if(settings.timetableMax < timetableDic.length){
-				timetableDic.splice(settings.timetableMax);
-			}
-
-			document.querySelector('#timetable_list').prepend(timetableItemCreate(timetableDic[0]));
-
-			localStorage.timetable = JSON.stringify(timetableDic);
-			musicEndtime = timestamp_time + music_data.lengthInSeconds * 1000;
-			localStorage.endtime = musicEndtime + '';
+				break;
+			case 'add_playlist':
+				newNode.querySelector('.reason .text').append(reasonTextPlaylistTemplate.cloneNode(true));
+				if(!settings.displayReasonAll){
+					newNode.querySelector('.reason').classList.add('invisible');
+				}
+				break;
+			case 'priority_playlist':
+				newNode.querySelector('.reason .text').append(reasonTextPriorityTemplate.cloneNode(true));
+				newNode.querySelector('.reason .priority_list').href = `https://kiite.jp/playlist/${reason.list_id}`;
+				break;
+			default:
+				newNode.querySelector('.reason .text').append(reasonTextSpecialTemplate.cloneNode(true));
+				if(!settings.displayReasonAll){
+					newNode.querySelector('.reason').classList.add('invisible');
+				}
+				break;
 		}
-
-		updateTimecounter(nowtime);
-	}, settings.waitTime);
-}
-
-function observeUserCondition(){
-	if(!!timetableDic.length){
-		if(Date.now() < musicEndtime + settings.endtimeTolerance){
-			const qsaUser = document.querySelectorAll('#cafe_space .user'),
-				qsTimetableFirst = document.querySelector('#timetable_list .timetable_item:first-child');
-			const newData = {};
-			qsaUser.forEach(e => {
-				e.classList.forEach(v => {
-					newData[v] = (newData[v] ?? 0) + 1;
-				});
-			});
-			for(const element of qsaUser){
-				const commentData = {
-					iconUrl: element.querySelector('.thumbnail').style.backgroundImage.split('"')[1],
-					text: element.querySelector('.comment').textContent,
-					userId: element.dataset.user_id,
-					userName: element.querySelector('.user_nickname').textContent, 
-					presenter: element.classList.contains('presenter'), 
-				};
-				if(obsComment[commentData.userId] !== undefined && !!commentData.text && obsComment[commentData.userId] !== commentData.text){
-					if(notice_flag && !document.hasFocus()){
-						Notification.requestPermission().then(() => {
-							new Notification(commentData.text,{ body : commentData.userName });
+		newNode.querySelector('.reason .user_name').href = `https://kiite.jp/user/${reason.user_id}`;
+		newNode.querySelector('.timetable_item').dataset.timestamp = new Date(music_data.start_time).getTime();
+		newNode.querySelector('.title').textContent = music_data.title;
+		newNode.querySelector('.artist').textContent = music_data.artist_name;
+		newNode.querySelector('.source > a').href = `https://kiite.jp/search/song?keyword=${music_data.baseinfo.video_id}`;
+		if(!!0){
+			newNode.querySelector('.rotate').classList.remove('invisible');
+			newNode.querySelector('.rotate > .count').textContent = itemData.gesture_rotate;
+		}
+		if(!!music_data.new_fav_user_ids?.length){
+			newNode.querySelector('.new_fav').classList.remove('invisible');
+			newNode.querySelector('.new_fav > .count').textContent = music_data.new_fav_user_ids.length;
+		}
+		if(0 && !!itemData.reason.text[0]){
+			newNode.querySelector('.comment_list').classList.remove('empty');
+			const reasonComment = timetableCommentTemplate.cloneNode(true), 
+			reasonText = itemData.reason.text.join('<br>');
+			reasonComment.querySelector('.comment_text').classList.add('reason_comment_text');
+			reasonComment.querySelector('.comment_icon').style.backgroundImage = `url("${itemData.reason.iconUrl}")`;
+			reasonComment.querySelector('.reason_comment_text').innerHTML = reasonText;
+			newNode.querySelector('.comment_list').append(reasonComment);
+		}
+		if(0 && !!itemData.commentList[0]){
+			newNode.querySelector('.comment_list').classList.remove('empty');
+			for(const element of itemData.commentList){
+				newNode.querySelector('.comment_list').append(timetableCommentCreate(element));
+			}
+		}
+		if(0 && !!newNode.querySelector('.comment_tail')){
+			newNode.querySelector('.comment_tail').onclick = (_this) => {
+				if((_this.ctrlKey && !_this.metaKey) || (!_this.ctrlKey && _this.metaKey)){
+					const elementFolded = _this.target.closest('.timetable_item').querySelector('.comment_list').classList.contains('folded');
+					if(elementFolded){
+						document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
+							e.classList.remove('folded');
+						});
+					}else{
+						document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
+							e.classList.add('folded');
 						});
 					}
-					qsTimetableFirst.querySelector('.comment_list').append(timetableCommentCreate(commentData));
-					qsTimetableFirst.querySelector('.comment_list').classList.remove('empty');
-					timetableDic[0].commentList.push(commentData);
-					localStorage.timetable = JSON.stringify(timetableDic);
+				}else{
+					_this.target.closest('.timetable_item').querySelector('.comment_list').classList.toggle('folded');
 				}
-				obsComment[commentData.userId] = commentData.text;
-			}
-			if(timetableDic[0].gesture_rotate < newData?.gesture_rotate){
-				if(!timetableDic[0].gesture_rotate){
-					qsTimetableFirst.querySelector('.rotate').classList.remove('invisible');
-				}
-				qsTimetableFirst.querySelector('.rotate > .count').textContent = newData.gesture_rotate;
-				timetableDic[0].gesture_rotate = newData.gesture_rotate;
-			}
-			if(timetableDic[0].new_fav < newData?.new_fav){
-				if(!timetableDic[0].new_fav){
-					qsTimetableFirst.querySelector('.new_fav').classList.remove('invisible');
-				}
-				qsTimetableFirst.querySelector('.new_fav > .count').textContent = newData.new_fav;
-				timetableDic[0].new_fav = newData.new_fav;
-			}
-		}else{
-			document.querySelectorAll('#timetable_list .timetable_item.onair_now').forEach(e => {
-				e.classList.remove('onair_now');
-			});
+			};
 		}
-	}
-}
+		
+		// await userData;
+		// newNode.querySelector('.reason .icon').style.backgroundImage = `url("${userData.avatar_url}")`;
+		// newNode.querySelector('.reason .user_name').textContent = userData.nickname;
 
-function updateTimecounter(nowtime){
-	document.querySelectorAll('#timetable_list .timetable_item').forEach((element, index) => {
-		if(index < settings.timetableMax){
-			if(!!index){
-				element.classList.remove('onair_now');
-			}else{
-				element.classList.add('onair_now')
-			}
-			if(!!element.querySelector('.timestamp')){
-				element.querySelector('.timestamp').textContent = ((lag) => {
-					if(lag < 60){
-						return ~~(lag) + '秒前';
-					}else if(lag < 3600){
-						return ~~(lag / 60) + '分前';
-					}else if(lag < 86400){
-						return ~~(lag / 3600) + '時間前';
-					}
-					return ~~(lag / 86400) + '日前';
-				})((nowtime - element.dataset.timestamp) / 1000);
-			}
-		}else{
-			element.remove();
+		timetable.append(newNode);
+	}
+	const rotate_history = await callApi('https://cafe.kiite.jp/api/cafe/rotate_users', {ids: selection_id})
+
+	timetable.querySelectorAll(".rotate").forEach((element, index) => {
+		const rotate_users = rotate_history[selection_id[index]];
+		if(!!rotate_users?.length){
+			element.classList.remove('invisible');
+			element.querySelector('.count').textContent = rotate_users.length;
 		}
 	});
-}
 
-function timetableItemCreate(itemData){
-	const newNode = document.createDocumentFragment();
-	newNode.append(timetableItemTemplate.cloneNode(true));
-	newNode.querySelector('.thumbnail').style.backgroundImage = `url("${itemData.thumbnailUrl}")`;
-	newNode.querySelector('.reason .icon').style.backgroundImage = `url("${itemData.reason.iconUrl}")`;
-	switch(itemData.reason.listUrl){
-		case '__faves__':
-			newNode.querySelector('.reason .text').append(reasonTextFavTemplate.cloneNode(true));
-			if(!settings.displayReasonAll){
-				newNode.querySelector('.reason').classList.add('invisible');
-			}
-			break;
-		case '__playlist__':
-			newNode.querySelector('.reason .text').append(reasonTextPlaylistTemplate.cloneNode(true));
-			if(!settings.displayReasonAll){
-				newNode.querySelector('.reason').classList.add('invisible');
-			}
-			break;
-		case '__specialmenu__':
-			newNode.querySelector('.reason .text').append(reasonTextSpecialTemplate.cloneNode(true));
-			if(!settings.displayReasonAll){
-				newNode.querySelector('.reason').classList.add('invisible');
-			}
-			break;
-		default:
-			newNode.querySelector('.reason .text').append(reasonTextPriorityTemplate.cloneNode(true));
-			newNode.querySelector('.reason .priority_list').href = `https://kiite.jp/playlist/${itemData.reason.listUrl}`;
-			break;
-	}
-	newNode.querySelector('.reason .user_name').href = `https://kiite.jp/user/${itemData.reason.userUrlId}`;
-	newNode.querySelector('.reason .user_name').textContent = itemData.reason.userNickname;
-	newNode.querySelector('.timetable_item').dataset.timestamp = itemData.timestamp;
-	newNode.querySelector('.title').textContent = itemData.title;
-	newNode.querySelector('.artist').textContent = itemData.artist;
-	newNode.querySelector('.source > a').href = `https://kiite.jp/search/song?keyword=${itemData.videoId}`;
-	if(!!itemData.gesture_rotate){
-		newNode.querySelector('.rotate').classList.remove('invisible');
-		newNode.querySelector('.rotate > .count').textContent = itemData.gesture_rotate;
-	}
-	if(!!itemData.new_fav){
-		newNode.querySelector('.new_fav').classList.remove('invisible');
-		newNode.querySelector('.new_fav > .count').textContent = itemData.new_fav;
-	}
-	if(!!itemData.reason.text[0]){
-		newNode.querySelector('.comment_list').classList.remove('empty');
-		const reasonComment = timetableCommentTemplate.cloneNode(true), 
-			reasonText = itemData.reason.text.join('<br>');
-		reasonComment.querySelector('.comment_text').classList.add('reason_comment_text');
-		reasonComment.querySelector('.comment_icon').style.backgroundImage = `url("${itemData.reason.iconUrl}")`;
-		reasonComment.querySelector('.reason_comment_text').innerHTML = reasonText;
-		newNode.querySelector('.comment_list').append(reasonComment);
-	}
-	if(!!itemData.commentList[0]){
-		newNode.querySelector('.comment_list').classList.remove('empty');
-		for(const element of itemData.commentList){
-			newNode.querySelector('.comment_list').append(timetableCommentCreate(element));
-		}
-	}
-	if(!!newNode.querySelector('.comment_tail')){
-		newNode.querySelector('.comment_tail').onclick = (_this) => {
-			if((_this.ctrlKey && !_this.metaKey) || (!_this.ctrlKey && _this.metaKey)){
-				const elementFolded = _this.target.closest('.timetable_item').querySelector('.comment_list').classList.contains('folded');
-				if(elementFolded){
-					document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
-						e.classList.remove('folded');
-					});
-				}else{
-					document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
-						e.classList.add('folded');
-					});
-				}
-			}else{
-				_this.target.closest('.timetable_item').querySelector('.comment_list').classList.toggle('folded');
-			}
-		};
-	}
-
-	if(itemData.brank){
-		newNode.append(timetableBrankTemplate.cloneNode(true));
-	}
-	return newNode;
+	return timetable;
 }
-
-function timetableCommentCreate(itemData){
-	const newNode = timetableCommentTemplate.cloneNode(true);
-	newNode.querySelector('.comment_icon').style.backgroundImage = `url("${itemData.iconUrl}")`;
-	newNode.querySelector('.comment_text').textContent = itemData.text;
-	if(itemData.presenter){
-		newNode.querySelector('.comment_text').classList.add('presenter');
-	}
-	return newNode;
-}
+				
+// function timetableCommentCreate(itemData){
+// 	const newNode = timetableCommentTemplate.cloneNode(true);
+// 	newNode.querySelector('.comment_icon').style.backgroundImage = `url("${itemData.iconUrl}")`;
+// 	newNode.querySelector('.comment_text').textContent = itemData.text;
+// 	if(itemData.presenter){
+// 		newNode.querySelector('.comment_text').classList.add('presenter');
+// 	}
+// 	return newNode;
+// }
