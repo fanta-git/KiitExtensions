@@ -12,7 +12,7 @@
     ],
     "content_scripts": [
         {
-            "matches": ["https://cafe.kiite.jp/*"],
+            "matches": ["https://cafe.kiite.jp/pc"],
             "css": ["CafExtension/style.css"],
             "js" : ["CafExtension/script.js"]
         },
