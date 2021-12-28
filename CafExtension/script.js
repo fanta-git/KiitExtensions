@@ -1,10 +1,9 @@
 'use strict';
 
 const settings = {
-	timetableMax: 100,
 	waitTime: 2000,
 	intervalTime: 1000,
-	endtimeTolerance: 10000,
+	endtimeTolerance: 3000,
 	colorThreshold: 6,
 	commmentFold: true,
 	displayReasonAll: true
@@ -73,17 +72,16 @@ const reasonTextPlaylistTemplate = new Range().createContextualFragment(`
 `);
 
 const reasonTextSpecialTemplate = new Range().createContextualFragment(`
-	<a class="user_name" href="" target="_blank"></a>さんの<b class="playlist">特別メニュー</b>の曲です
+	<a class="user_name" href="" target="_blank"></a>さんの<b class="priority_list">特別メニュー</b>の曲です
 `);
 
 const timetableDic = JSON.parse(localStorage.timetable ?? '[]'), 
 	obsComment = {};
-let musicEndtime = parseInt(localStorage.endtime),
+let endtime = 0,
 	notice_flag = localStorage.ntc_flag === 'true';
 
 window.onload = () => {
 	setMenuDom();
-	setTimetable();
 
 	chrome.storage.onChanged.addListener((changes, namespace) => {
 		for (const [key, {oldValue, newValue}] of Object.entries(changes)) {
@@ -92,11 +90,15 @@ window.onload = () => {
 			}
 		}
 	});
+
+	setInterval(observeCafe, settings.intervalTime);
 };
 
 let lastCallApi = 0;
-async function callApi(url, queryParam = {}) {
+async function callApi(url, queryParam = {}, count = 0) {
 	const nowtime = Date.now();
+	const queryUrl = Object.keys(queryParam).length ? '?'+new URLSearchParams(queryParam) : '';
+
 	if(nowtime - lastCallApi < 500){
 		lastCallApi += 500;
 		await new Promise(r => setTimeout(r, lastCallApi - nowtime));
@@ -104,16 +106,22 @@ async function callApi(url, queryParam = {}) {
 		lastCallApi = nowtime;
 	}
 
-	if(Object.keys(queryParam).length){
-		url += '?' + new URLSearchParams(queryParam);
+	const res = await fetch(url+queryUrl);
+
+	if(res.status === 200){
+		const json = await res.json();
+		console.log(json);
+		return json;
+	}else{
+		if(3 <= count){
+			console.error(url+queryParam, res);
+			return null
+		}else{
+			await new Promise(r => setTimeout(r, 500));
+			return await callApi(url, queryParam, count++);
+		}
 	}
-
-	const res = await fetch(url);
-	const json = await res.json();
-	console.log(json);
-
-	return json;
-};
+}
 
 function setMenuDom(){
 	document.querySelector('#now_playing_info .source').insertAdjacentHTML('afterend', `
@@ -215,7 +223,7 @@ function setMusicDetail(music_info){
 			.replace(/(?<![\/\w@])(sm|nm)\d+/g, '<a href="https://www.nicovideo.jp/watch/$&" target="_blank">$&</a>')
 			.replace(/(?<![\/\w@])nc\d+/g, '<a href="https://commons.nicovideo.jp/material/$&" target="_blank">$&</a>')
 			.replace(/(?<![\/\w@])co\d+/g, '<a href="https://com.nicovideo.jp/community/$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w])@(\w+)/g, '<a href="https://twitter.com/$1" target="_blank">$&</a>')
+			.replace(/(?<![\/\w])(@|＠)(\w+)/g, '<a href="https://twitter.com/$2" target="_blank">$&</a>')
 			.replace(/#[0-9a-fA-F]{6}/g, ((match) => {
 				let [r, g, b] = [parseInt(match.substr(1, 2), 16), parseInt(match.substr(3, 2), 16), parseInt(match.substr(5, 2), 16)];
 				const blightRatio = (_r, _g, _b) => {
@@ -251,40 +259,17 @@ function setMusicDetail(music_info){
 	);
 }
 
-function setTimetable(){
-	const observer = new MutationObserver(addTimetable);
-
-	callApi('/api/cafe/timetable', {with_comment: 1, limit: 100})
-		.then(res => timetableCreate(...res))
-		.then(timetable => document.querySelector('#timetable_list').append(timetable))
-		.then(_ => observer.observe(document.querySelector('#now_playing_info .title'), {childList: true}));
-}
-
-function addTimetable(){
-	callApi('/api/cafe/now_playing')
-		.then(res => timetableCreate(res))
-		.then(res => {
-			const qsTimetable = document.querySelector('#timetable_list');
-			if(qsTimetable.querySelector('.timetable_item:first-child').dataset.id !== res.id){
-				qsTimetable.querySelectorAll('.timetable_item:nth-child(n + 100)').forEach(e => {
-					e.remove();
-				});
-				qsTimetable.prepend(res);
-			}
-			updateTimecounter(qsTimetable);
-		});
-}
-
 const userData = {};
 
-async function timetableCreate(...dataArr){
+async function setTimetable(...dataArr){
 	const timetable = document.createDocumentFragment();
 	const selection_id = [];
 	const add_user_ids = [];
+
 	for(const music_data of dataArr){
 		const reason_user_id = music_data.reasons.find(e => e.user_id === music_data.request_user_ids[0]).user_id;
 		//music_data.reasons[0].user_idも候補、こっちは多分正確な理由ではないけどスマホ版と同じになる
-		if(userData[reason_user_id] !== null && !add_user_ids.includes(reason_user_id)){
+		if(userData[reason_user_id] === undefined && !add_user_ids.includes(reason_user_id)){
 			add_user_ids.push(reason_user_id);
 		}
 
@@ -319,13 +304,14 @@ async function timetableCreate(...dataArr){
 				}
 				break;
 			case 'priority_playlist':
-				newNode.querySelector('.reason .text').append(reasonTextPriorityTemplate.cloneNode(true));
-				newNode.querySelector('.reason .priority_list').href = `https://kiite.jp/playlist/${reason.list_id}`;
-				break;
-			default:
-				newNode.querySelector('.reason .text').append(reasonTextSpecialTemplate.cloneNode(true));
-				if(!settings.displayReasonAll){
-					newNode.querySelector('.reason').classList.add('invisible');
+				if(!!music_data.presenter_user_ids && !!music_data.presenter_user_ids.includes(reason.user_id)){
+					newNode.querySelector('.reason .text').append(reasonTextSpecialTemplate.cloneNode(true));
+					if(!settings.displayReasonAll){
+						newNode.querySelector('.reason').classList.add('invisible');
+					}
+				}else{
+					newNode.querySelector('.reason .text').append(reasonTextPriorityTemplate.cloneNode(true));
+					newNode.querySelector('.reason .priority_list').href = `https://kiite.jp/playlist/${reason.list_id}`;
 				}
 				break;
 		}
@@ -354,7 +340,8 @@ async function timetableCreate(...dataArr){
 	}
 	updateTimecounter(timetable);
 
-	return timetable;
+	document.querySelector('#timetable_list').replaceChildren(timetable);
+	return null;
 }
 
 // function timetableCommentCreate(itemData){
@@ -388,4 +375,58 @@ function updateTimecounter(timetable){
 			})((nowtime - element.dataset.timestamp) / 1000);
 		}
 	});
+}
+
+const commentData = {};
+
+async function observeCafe(){
+	if(endtime + settings.endtimeTolerance < Date.now()){
+		const res = await callApi('/api/cafe/timetable', {with_comment: 1, limit: 100});
+		endtime = new Date(res[0].start_time).getTime() + res[0].msec_duration;
+		await setTimetable(...res);
+	}
+
+	const qsaUser = document.querySelectorAll('#cafe_space .user');
+	const qsTimetableFirst = document.querySelector('#timetable_list .timetable_item:first-child');
+	const qsRotate = qsTimetableFirst.querySelector('.rotate');
+	const qsNew_fav = qsTimetableFirst.querySelector('.new_fav');
+	const new_fav_user_ids = [];
+	const gesture_rotate_user_ids = [];
+
+	qsaUser.forEach(e => {
+		if(e.classList.contains('new_fav')){
+			new_fav_user_ids.push(e.dataset.user_id);
+		};
+		if(e.classList.contains('gesture_rotate')){
+			gesture_rotate_user_ids.push(e.dataset.user_id);
+		}
+	});
+
+	if(Number(qsNew_fav.querySelector('.count').textContent) < new_fav_user_ids.length){
+		qsNew_fav.classList.remove('invisible');
+		qsNew_fav.querySelector('.count').textContent = new_fav_user_ids.length;
+	}
+
+	if(Number(qsRotate.querySelector('.count').textContent) < gesture_rotate_user_ids.length){
+		qsRotate.classList.remove('invisible');
+		qsRotate.querySelector('.count').textContent = gesture_rotate_user_ids.length;
+	}
+
+	// for(const element of qsaUser){
+	// 	if(!!commentData[element.dataset.user_id]){
+	// 		commentData[element.dataset.user_id] = element.querySelector('.comment').textContent;
+	// 	}
+	// 	if(obsComment[commentData.userId] !== undefined && !!commentData.text && obsComment[commentData.userId] !== commentData.text){
+	// 		if(notice_flag && !document.hasFocus()){
+	// 			Notification.requestPermission().then(() => {
+	// 				new Notification(commentData.text,{ body : commentData.userName });
+	// 			});
+	// 		}
+	// 		qsTimetableFirst.querySelector('.comment_list').append(timetableCommentCreate(commentData));
+	// 		qsTimetableFirst.querySelector('.comment_list').classList.remove('empty');
+	// 		timetableDic[0].commentList.push(commentData);
+	// 		localStorage.timetable = JSON.stringify(timetableDic);
+	// 	}
+	// 	obsComment[commentData.userId] = commentData.text;
+	// }
 }
