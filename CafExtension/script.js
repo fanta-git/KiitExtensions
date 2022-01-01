@@ -2,6 +2,7 @@
 
 const settings = {
 	waitTime: 2000,
+	timetableLength: 100,
 	intervalTime: 1000,
 	endtimeTolerance: 3000,
 	colorThreshold: 6,
@@ -303,26 +304,25 @@ const userData = {};
 
 async function setTimetable(dataArr, commentObj){
 	const timetable = document.createDocumentFragment();
-	const selection_id = [];
+	const rotate_history = await callApi('/api/cafe/rotate_users', {ids: dataArr.map(e => e.id)});
 	const pool = new poolUserId();
+	const reasonSearch = data => data.reasons.find(e => e.user_id === data.request_user_ids[0]);
+	//music_data.reasons[0].user_idも候補、正確な理由ではないけどスマホ版と同じになる
 
 	for(const music_data of dataArr){
-		const reason_user_id = music_data.reasons.find(e => e.user_id === music_data.request_user_ids[0]).user_id;
-		//music_data.reasons[0].user_idも候補、正確な理由ではないけどスマホ版と同じになる
+		const reason_user_id = reasonSearch(music_data).user_id;
 
 		pool.add(reason_user_id);
+		pool.add(...music_data.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
 		if(commentObj[music_data.id] !== undefined){
-			pool.add(...Array.from(commentObj[music_data.id], e => e.user_id));
+			pool.add(...commentObj[music_data.id].map(e => e.user_id));
 		}
-		selection_id.push(music_data.id);
 	}
-	
+
 	await pool.load();
 	
-	const rotate_history = await callApi('/api/cafe/rotate_users', {ids: selection_id});
-	
 	for(const music_data of dataArr){
-		const reason = music_data.reasons.find(e => e.user_id === music_data.request_user_ids[0]);
+		const reason = reasonSearch(music_data);
 		const newNode = document.createDocumentFragment();
 		newNode.append(timetableItemTemplate.cloneNode(true));
 		
@@ -342,29 +342,39 @@ async function setTimetable(dataArr, commentObj){
 			case 'priority_playlist':
 				if(!!music_data.presenter_user_ids?.includes(reason.user_id)){
 					newNode.querySelector('.reason .text').append(reasonTextSpecialTemplate.cloneNode(true));
-					if(!settings.displayReasonAll){
-						newNode.querySelector('.reason').classList.add('invisible');
-					}
 				}else{
 					newNode.querySelector('.reason .text').append(reasonTextPriorityTemplate.cloneNode(true));
 					newNode.querySelector('.reason .priority_list').href = `https://kiite.jp/playlist/${reason.list_id}`;
 				}
+	
+				const reason_comment_users = music_data.reasons.filter(v => !!v.playlist_comment);
+				if(!!reason_comment_users.length){
+					const reason_comment_data = [];
+					for(const priority_list of reason_comment_users){
+						userData[priority_list.user_id] ??= priority_list.user;
+						reason_comment_data.push({
+							user_id: priority_list.user_id, 
+							text: priority_list.playlist_comment, 
+							type: 'priority'
+						});
+					}
+					newNode.querySelector('.comment_list').append(timetableCommentCreate(reason_comment_data));
+					newNode.querySelector('.comment_list').classList.remove('empty');
+				}
 				break;
 		}
-		
+
+		newNode.querySelector('.reason .icon').style.backgroundImage = `url("${userData[reason.user_id].avatar_url}")`;
+		newNode.querySelector('.reason .user_name').textContent = userData[reason.user_id].nickname;
+		newNode.querySelector('.reason .user_name').href = `https://kiite.jp/user/${userData[reason.user_id].user_name}`;
+
 		newNode.querySelector('.timetable_item').dataset.timestamp = new Date(music_data.start_time).getTime();
 		newNode.querySelector('.timetable_item').dataset.id = music_data.id;
 		newNode.querySelector('.thumbnail').style.backgroundImage = `url("${music_data.thumbnail.replace('http://', 'https://')}")`;
-		newNode.querySelector('.reason .icon').style.backgroundImage = `url("${userData[reason.user_id].avatar_url}")`;
-		newNode.querySelector('.reason .user_name').textContent = userData[reason.user_id].nickname;
-		newNode.querySelector('.reason .user_name').href = `https://kiite.jp/user/${reason.user_id}`;
+		
 		newNode.querySelector('.title').textContent = music_data.title;
 		newNode.querySelector('.artist').textContent = music_data.artist_name;
 		newNode.querySelector('.source > a').href = `https://kiite.jp/search/song?keyword=${music_data.baseinfo.video_id}`;
-
-		for(const priority_list of music_data.reasons.fillter(v => v.playlist_comment !== undefined)){
-			priority_list
-		}
 
 		if(!!commentData[music_data.id]){
 			newNode.querySelector('.comment_list').append(timetableCommentCreate(commentObj[music_data.id]));
@@ -462,7 +472,7 @@ const commentData = {};
 async function observeCafe(){
 	const timetableData = [];
 	if(endtime + settings.endtimeTolerance < Date.now()){
-		Object.assign(timetableData, await callApi('/api/cafe/timetable', {with_comment: 1, limit: 100}));
+		Object.assign(timetableData, await callApi('/api/cafe/timetable', {with_comment: 1, limit: settings.timetableLength}));
 		endtime = new Date(timetableData[0].start_time).getTime() + timetableData[0].msec_duration;
 		await setTimetable(timetableData, commentData);
 	}
