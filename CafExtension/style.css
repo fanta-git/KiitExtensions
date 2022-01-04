@@ -268,6 +268,10 @@
   color: #ffef00;
 }
 
+#timetable_list .reason .special_list {
+  color: cyan;
+}
+
 #timetable_list .reason .priority_list {
   color: cyan;
 }
@@ -290,8 +294,17 @@
 #timetable_list .artist {
   display: flex;
   grid-area: arti;
-  color: #AAA;
   align-items: center;
+}
+
+#timetable_list .artist span {
+  color: #AAA;
+}
+
+#timetable_list .artist span:hover {
+  text-decoration: underline;
+  cursor: pointer;
+  color: white;
 }
 
 #timetable_list .rotate, #timetable_list .new_fav {
@@ -470,24 +483,10 @@
   font-size: 0;
   border-width: 0;
   row-gap: 0;
-  min-height: 0;
 }
 
 #timetable_list .comment_list.folded .comment_icon {
   height: 0;
-}
-
-#timetable_list .timetable_brank {
-  grid-column: 1 / -1;
-  grid-row: 1 / -1;
-  display: grid;
-  place-items: center;
-}
-
-#timetable_list .timetable_brank .material-icons {
-  font-size: 50px;
-  color: #AAA;
-  cursor: default;
 }
 
 @media screen and (max-width: 1050px) {

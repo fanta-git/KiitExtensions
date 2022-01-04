@@ -2,7 +2,7 @@
     "name": "KiitExtension",
     "author": "fanta",
     "description": "PC版KiiteCafeに動画概要表示や選曲履歴機能を追加する拡張機能です",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "manifest_version": 3,
     "icons":{
         "128": "icon/128.png"

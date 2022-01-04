@@ -279,6 +279,10 @@ $commentFade: .2s;
             color: #ffef00;
         }
         
+        .special_list {
+            color: cyan;
+        }
+        
         .priority_list {
             color: cyan;
         }
@@ -302,9 +306,19 @@ $commentFade: .2s;
     .artist {
         display: flex;
         grid-area: arti;
-        color: #AAA;
         align-items: center;
+
+        span {
+            color: #AAA;
+        }
+
+        span:hover {
+            text-decoration: underline;
+            cursor: pointer;
+            color: white;
+        }
     }
+
 
     .rotate, .new_fav {
         display: inline-flex;
@@ -461,7 +475,7 @@ $commentFade: .2s;
         }
         
         &, .comment *, .comment_text span {
-            transition: $commentResize .0s;
+            transition: $commentResize 0s;
         }
     }
 
@@ -483,25 +497,11 @@ $commentFade: .2s;
             font-size: 0;
             border-width: 0;
             row-gap: 0;
-            min-height: 0;
         }
         
         .comment_icon {
             height: 0;
         }
-    }
-
-    .timetable_brank {
-        grid-column: 1 / -1;
-        grid-row: 1 / -1;
-        display: grid;
-        place-items: center;
-    }
-
-    .timetable_brank .material-icons {
-        font-size: 50px;
-        color: #AAA;
-        cursor: default;
     }
 }
 

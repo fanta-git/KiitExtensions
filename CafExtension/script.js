@@ -4,7 +4,6 @@ const settings = {
 	waitTime: 2000,
 	timetableLength: 100,
 	intervalTime: 1000,
-	endtimeTolerance: 3000,
 	colorThreshold: 6,
 	commmentFold: true,
 	displayReasonAll: true
@@ -32,6 +31,11 @@ class poolUserId{
 		}
 		this.pool = [];
 	}
+
+	async addAndLoad(...user_ids){
+		this.add(...user_ids);
+		await this.load();
+	}
 }
 
 const timetableItemTemplate = new Range().createContextualFragment(`
@@ -46,7 +50,7 @@ const timetableItemTemplate = new Range().createContextualFragment(`
 				<div class="text"></div>
 			</div>
 			<div class="title"></div>
-			<div class="artist"></div>
+			<div class="artist"><span></span></div>
 			<div class="rotate invisible">
 				<b>回</b>
 				<span class="count"></span>
@@ -76,14 +80,6 @@ const timetableCommentTemplate = new Range().createContextualFragment(`
 	</div>
 `);
 
-const timetableBrankTemplate = new Range().createContextualFragment(`
-	<div class="timetable_item">
-		<div class="timetable_brank">
-			<i class="material-icons">more_vert</i>
-		</div>
-	</div>
-`);
-
 const reasonTextPriorityTemplate = new Range().createContextualFragment(`
 	<a class="user_name" href="" target="_blank"></a>さんの<a class="priority_list" href="" target="_blank">イチ推しリスト</a>の曲です
 `);
@@ -97,13 +93,8 @@ const reasonTextPlaylistTemplate = new Range().createContextualFragment(`
 `);
 
 const reasonTextSpecialTemplate = new Range().createContextualFragment(`
-	<a class="user_name" href="" target="_blank"></a>さんの<b class="priority_list">特別メニュー</b>の曲です
+	<a class="user_name" href="" target="_blank"></a>さんの<b class="special_list">特別メニュー</b>の曲です
 `);
-
-const timetableDic = JSON.parse(localStorage.timetable ?? '[]'), 
-	obsComment = {};
-let endtime = 0,
-	notice_flag = localStorage.ntc_flag === 'true';
 
 window.onload = () => {
 	setMenuDom();
@@ -164,6 +155,7 @@ function storageSet(key, value){
 	});
 }
 
+let notice_flag = false;
 function setMenuDom(){
 	document.querySelector('#now_playing_info .source').insertAdjacentHTML('afterend', `
 		<div class="rd_toggle" id="rd_toggle">
@@ -173,6 +165,11 @@ function setMenuDom(){
 			<i class="material-icons">${notice_flag ? 'notifications_active' : 'notifications_off'}</i>
 		</div>
 	`);
+
+	storageGet('ntc_flag').then(res => {
+		notice_flag = res;
+		document.querySelector('#ntc_toggle .material-icons').textContent = (notice_flag ? 'notifications_active' : 'notifications_off');
+	});
 
 	document.querySelector('#reasons').insertAdjacentHTML('afterend', `
 		<div id="music_data">
@@ -235,7 +232,7 @@ function setMenuDom(){
 	document.querySelector('#ntc_toggle').onclick = () => {
 		Notification.requestPermission();
 		notice_flag = !notice_flag;
-		localStorage.ntc_flag = (notice_flag ? 'true' : 'false');
+		storageSet('ntc_flag', notice_flag);
 		document.querySelector('#ntc_toggle .material-icons').textContent = (notice_flag ? 'notifications_active' : 'notifications_off');
 	};
 
@@ -244,7 +241,7 @@ function setMenuDom(){
 			qsCafe.classList.remove(...viewclass);
 			qsCafe.classList.add(`view_${element.dataset.val}`);
 		};
-	};
+	}
 }
 
 function setMusicDetail(music_info){
@@ -301,121 +298,126 @@ function setMusicDetail(music_info){
 }
 
 const userData = {};
-
 async function setTimetable(dataArr, commentObj){
 	const timetable = document.createDocumentFragment();
 	const rotate_history = await callApi('/api/cafe/rotate_users', {ids: dataArr.map(e => e.id)});
 	const pool = new poolUserId();
-	const reasonSearch = data => data.reasons.find(e => e.user_id === data.request_user_ids[0]);
-	//music_data.reasons[0].user_idも候補、正確な理由ではないけどスマホ版と同じになる
-
+	
 	for(const music_data of dataArr){
-		const reason_user_id = reasonSearch(music_data).user_id;
-
+		const reason_user_id = music_data.reasons[0].user_id;
 		pool.add(reason_user_id);
 		pool.add(...music_data.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
 		if(commentObj[music_data.id] !== undefined){
 			pool.add(...commentObj[music_data.id].map(e => e.user_id));
 		}
 	}
-
+	
 	await pool.load();
 	
 	for(const music_data of dataArr){
-		const reason = reasonSearch(music_data);
-		const newNode = document.createDocumentFragment();
-		newNode.append(timetableItemTemplate.cloneNode(true));
-		
-		switch(reason.type){
-			case 'favorite':
-				newNode.querySelector('.reason .text').append(reasonTextFavTemplate.cloneNode(true));
-				if(!settings.displayReasonAll){
-					newNode.querySelector('.reason').classList.add('invisible');
-				}
-				break;
-			case 'add_playlist':
-				newNode.querySelector('.reason .text').append(reasonTextPlaylistTemplate.cloneNode(true));
-				if(!settings.displayReasonAll){
-					newNode.querySelector('.reason').classList.add('invisible');
-				}
-				break;
-			case 'priority_playlist':
-				if(!!music_data.presenter_user_ids?.includes(reason.user_id)){
-					newNode.querySelector('.reason .text').append(reasonTextSpecialTemplate.cloneNode(true));
-				}else{
-					newNode.querySelector('.reason .text').append(reasonTextPriorityTemplate.cloneNode(true));
-					newNode.querySelector('.reason .priority_list').href = `https://kiite.jp/playlist/${reason.list_id}`;
-				}
-	
-				const reason_comment_users = music_data.reasons.filter(v => !!v.playlist_comment);
-				if(!!reason_comment_users.length){
-					const reason_comment_data = [];
-					for(const priority_list of reason_comment_users){
-						userData[priority_list.user_id] ??= priority_list.user;
-						reason_comment_data.push({
-							user_id: priority_list.user_id, 
-							text: priority_list.playlist_comment, 
-							type: 'priority'
-						});
-					}
-					newNode.querySelector('.comment_list').append(timetableCommentCreate(reason_comment_data));
-					newNode.querySelector('.comment_list').classList.remove('empty');
-				}
-				break;
-		}
-
-		newNode.querySelector('.reason .icon').style.backgroundImage = `url("${userData[reason.user_id].avatar_url}")`;
-		newNode.querySelector('.reason .user_name').textContent = userData[reason.user_id].nickname;
-		newNode.querySelector('.reason .user_name').href = `https://kiite.jp/user/${userData[reason.user_id].user_name}`;
-
-		newNode.querySelector('.timetable_item').dataset.timestamp = new Date(music_data.start_time).getTime();
-		newNode.querySelector('.timetable_item').dataset.id = music_data.id;
-		newNode.querySelector('.thumbnail').style.backgroundImage = `url("${music_data.thumbnail.replace('http://', 'https://')}")`;
-		
-		newNode.querySelector('.title').textContent = music_data.title;
-		newNode.querySelector('.artist').textContent = music_data.artist_name;
-		newNode.querySelector('.source > a').href = `https://kiite.jp/search/song?keyword=${music_data.baseinfo.video_id}`;
-
-		if(!!commentData[music_data.id]){
-			newNode.querySelector('.comment_list').append(timetableCommentCreate(commentObj[music_data.id]));
-			newNode.querySelector('.comment_list').classList.remove('empty');
-		}
-
-		if(!!newNode.querySelector('.comment_tail')){
-			newNode.querySelector('.comment_tail').onclick = (_this) => {
-				if((_this.ctrlKey && !_this.metaKey) || (!_this.ctrlKey && _this.metaKey)){
-					const elementFolded = _this.target.closest('.timetable_item').querySelector('.comment_list').classList.contains('folded');
-					if(elementFolded){
-						document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
-							e.classList.remove('folded');
-						});
-					}else{
-						document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
-							e.classList.add('folded');
-						});
-					}
-				}else{
-					_this.target.closest('.timetable_item').querySelector('.comment_list').classList.toggle('folded');
-				}
-			};
-		}
-
-		if(!!music_data.new_fav_user_ids?.length){
-			newNode.querySelector('.new_fav').classList.remove('invisible');
-			newNode.querySelector('.new_fav > .count').textContent = music_data.new_fav_user_ids.length;
-		}
-		
-		if(!!rotate_history[music_data.id]?.length){
-			const rotate = newNode.querySelector('.rotate');
-			rotate.classList.remove('invisible');
-			rotate.querySelector('.count').textContent = rotate_history[music_data.id].length;
-		}
-		timetable.append(newNode);
+		timetable.append(createTimetableItem(music_data, rotate_history[music_data.id], commentObj[music_data.id]));
 	}
 	updateTimecounter(timetable);
-
+	
 	document.querySelector('#timetable_list').replaceChildren(timetable);
-	return null;
+}
+
+function createTimetableItem(music_data, rotate_data = null, comment_data = null){
+	// const reasonSearch = data => data.reasons.find(e => e.user_id === data.request_user_ids[0]);
+	const reason = music_data.reasons[0];
+	const newNode = document.createDocumentFragment();
+	newNode.append(timetableItemTemplate.cloneNode(true));
+	
+	switch(reason.type){
+		case 'favorite':
+			newNode.querySelector('.reason .text').append(reasonTextFavTemplate.cloneNode(true));
+			if(!settings.displayReasonAll){
+				newNode.querySelector('.reason').classList.add('invisible');
+			}
+			break;
+		case 'add_playlist':
+			newNode.querySelector('.reason .text').append(reasonTextPlaylistTemplate.cloneNode(true));
+			if(!settings.displayReasonAll){
+				newNode.querySelector('.reason').classList.add('invisible');
+			}
+			break;
+		case 'priority_playlist':
+			if(!!music_data.presenter_user_ids?.includes(reason.user_id)){
+				newNode.querySelector('.reason .text').append(reasonTextSpecialTemplate.cloneNode(true));
+			}else{
+				newNode.querySelector('.reason .text').append(reasonTextPriorityTemplate.cloneNode(true));
+				newNode.querySelector('.reason .priority_list').href = `https://kiite.jp/playlist/${reason.list_id}`;
+			}
+
+			const reason_comment_users = music_data.reasons.filter(v => !!v.playlist_comment);
+			if(!!reason_comment_users.length){
+				const reason_comment_data = [];
+				for(const priority_list of reason_comment_users){
+					userData[priority_list.user_id] ??= priority_list.user;
+					reason_comment_data.push({
+						user_id: priority_list.user_id, 
+						text: priority_list.playlist_comment, 
+						type: 'priority'
+					});
+				}
+				newNode.querySelector('.comment_list').append(timetableCommentCreate(reason_comment_data));
+				newNode.querySelector('.comment_list').classList.remove('empty');
+			}
+			break;
+	}
+
+	newNode.querySelector('.reason .icon').style.backgroundImage = `url("${userData[reason.user_id].avatar_url}")`;
+	newNode.querySelector('.reason .user_name').textContent = userData[reason.user_id].nickname;
+	newNode.querySelector('.reason .user_name').href = `https://kiite.jp/user/${userData[reason.user_id].user_name}`;
+
+	newNode.querySelector('.timetable_item').dataset.timestamp = new Date(music_data.start_time).getTime();
+	newNode.querySelector('.timetable_item').dataset.id = music_data.id;
+	newNode.querySelector('.thumbnail').style.backgroundImage = `url("${music_data.thumbnail.replace('http://', 'https://')}")`;
+	
+	newNode.querySelector('.title').textContent = music_data.title;
+	newNode.querySelector('.artist').dataset.artist_id = music_data.artist_id;
+	newNode.querySelector('.artist span').textContent = music_data.artist_name;
+	newNode.querySelector('.source > a').href = `https://kiite.jp/search/song?keyword=${music_data.baseinfo.video_id}`;
+
+	if(!!comment_data?.length){
+		newNode.querySelector('.comment_list').append(timetableCommentCreate(comment_data));
+		newNode.querySelector('.comment_list').classList.remove('empty');
+	}
+
+	newNode.querySelector('.music_info .artist span').onclick = _this => {
+		callApi('https://cafe.kiite.jp/api/artist/id', {artist_id: _this.target.parentNode.dataset.artist_id}).then(res => {
+			window.open('https://kiite.jp/creator/'+res.creator_id, '_blank');
+		});
+	};
+
+	newNode.querySelector('.comment_tail').onclick = _this => {
+		if((_this.ctrlKey && !_this.metaKey) || (!_this.ctrlKey && _this.metaKey)){
+			const elementFolded = _this.target.closest('.timetable_item').querySelector('.comment_list').classList.contains('folded');
+			if(elementFolded){
+				document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
+					e.classList.remove('folded');
+				});
+			}else{
+				document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
+					e.classList.add('folded');
+				});
+			}
+		}else{
+			_this.target.closest('.timetable_item').querySelector('.comment_list').classList.toggle('folded');
+		}
+	};
+
+	if(!!music_data.new_fav_user_ids?.length){
+		newNode.querySelector('.new_fav').classList.remove('invisible');
+		newNode.querySelector('.new_fav > .count').textContent = music_data.new_fav_user_ids.length;
+	}
+	
+	if(!!rotate_data?.length){
+		const rotate = newNode.querySelector('.rotate');
+		rotate.classList.remove('invisible');
+		rotate.querySelector('.count').textContent = rotate_data.length;
+	}
+	return newNode;
 }
 
 function timetableCommentCreate(dataArr){
@@ -468,13 +470,30 @@ async function intervalCallFunc(func, interval){
 	}
 }
 
-const commentData = {};
+const commentData = {}, obsComment = {};
+let endtime = null;
 async function observeCafe(){
-	const timetableData = [];
-	if(endtime + settings.endtimeTolerance < Date.now()){
-		Object.assign(timetableData, await callApi('/api/cafe/timetable', {with_comment: 1, limit: settings.timetableLength}));
+	if(endtime === null){
+		const timetableData = await callApi('/api/cafe/timetable', {with_comment: 1, limit: settings.timetableLength});
 		endtime = new Date(timetableData[0].start_time).getTime() + timetableData[0].msec_duration;
+		commentData[timetableData[0].id] ??= [];
 		await setTimetable(timetableData, commentData);
+	}else if(endtime + settings.waitTime < Date.now()){
+		const newItem = await callApi('/api/cafe/now_playing');
+		const pool = new poolUserId();
+		const lastId = document.querySelector(`#timetable_list .timetable_item:nth-child(${settings.timetableLength})`)?.dataset.id;
+		endtime = new Date(newItem.start_time).getTime() + newItem.msec_duration;
+		for(const comment_music_id of Object.keys(commentData)){
+			if(comment_music_id < lastId){
+				delete commentData[comment_music_id];
+			}
+		}
+		pool.add(newItem.reasons[0].user_id);
+		pool.add(...newItem.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
+		await pool.load();
+		document.querySelectorAll('#timetable_list .timetable_item:nth-child(n + 100)').forEach(e => e.remove());
+		document.querySelector('#timetable_list').prepend(createTimetableItem(newItem));
+		updateTimecounter(document.querySelector('#timetable_list'));
 	}
 
 	const qsTimetableFirst = document.querySelector('#timetable_list .timetable_item:first-child');
@@ -506,18 +525,21 @@ async function observeCafe(){
 	const newComments = [];
 	const music_id = qsTimetableFirst.dataset.id;
 	const pool = new poolUserId();
-	for(const element of document.querySelectorAll('#cafe_space .user.commenting_now')){
+	for(const element of document.querySelectorAll('#cafe_space .user')){
 		const comment_user_id = element.dataset.user_id;
 		const comment_text = element.querySelector('.comment').textContent;
-		if(obsComment[comment_user_id] !== comment_text){
-			newComments.push({
-				user_id: comment_user_id, 
-				text: comment_text, 
-				type: 'user'
-			});
-
-			pool.add(comment_user_id);
-
+		if(obsComment[comment_user_id] === undefined){
+			obsComment[comment_user_id] = comment_text;
+		}else if(obsComment[comment_user_id] !== comment_text){
+			if(comment_text !== ''){
+				newComments.push({
+					user_id: comment_user_id, 
+					text: comment_text, 
+					type: 'user'
+				});
+	
+				pool.add(comment_user_id);
+			}
 			obsComment[comment_user_id] = comment_text;
 		}
 	}
@@ -533,11 +555,7 @@ async function observeCafe(){
 			});
 		}
 
-		if(commentData[music_id] === undefined){
-			commentData[music_id] = newComments;
-		}else{
-			commentData[music_id].push(...newComments);
-		}
+		commentData[music_id].push(...newComments);
 
 		storageSet('commentData', commentData);
 		
