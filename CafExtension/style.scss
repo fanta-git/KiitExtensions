@@ -10,15 +10,15 @@ $commentFade: .2s;
     text-align: right;
 }
 
-#rd_toggle{
+#rd_toggle {
     margin-left: calc(100% - 70px);
 }
 
-#ntc_toggle{
+#ntc_toggle {
     margin-left: calc(100% - 100px);
 }
 
-#now_playing_info .inner{
+#now_playing_info .inner {
     .title {
         padding-right: 90px!important;
     }
@@ -34,7 +34,7 @@ $commentFade: .2s;
     }
 }
 
-#cafe.view_music_data #reasons{
+#cafe.view_music_data #reasons {
     display: none;
 }
 
@@ -56,7 +56,7 @@ $commentFade: .2s;
     margin: 0px 10px 0px 5px;
 }
 
-#music_data .inner > i{
+#music_data .inner > i {
     font-size: 20px;
     color: #FFF;
 }
@@ -69,22 +69,27 @@ $commentFade: .2s;
     line-height: 20px;
 }
 
-.music_detail_items{
+.music_detail_items {
 	display: flex;
 	align-items: center;
 }
 
-#music_description{
+#music_description {
     height: calc(100% - 40px);
     padding: 10px;
     background: rgba(0,0,0,0.5);
 	overflow-y: scroll; 
     word-wrap: break-word;
+    
+    a {
+        color: #b6b6b6;
+    }
+
+    i {
+        font-style: italic!important;
+    }
 }
 
-#music_description a{
-    color: #b6b6b6;
-}
 
 #cafe.view_timetable #cafe_menu li.timetable {
     margin-right: 0px;
@@ -94,7 +99,7 @@ $commentFade: .2s;
     border-left: 4px #ffef00 solid;
 }
 
-#timetable{ 
+#timetable { 
     position: relative;
     display: none;
     width: 100%;
@@ -129,7 +134,7 @@ $commentFade: .2s;
         font-size: 10px;
     }
 
-    .inner{
+    .inner {
         width: 100%;
         height: 100%;
         background: rgba(0,0,0,0.5);
@@ -165,7 +170,7 @@ $commentFade: .2s;
     cursor: pointer;
 }
 
-#timetable_list{
+#timetable_list {
     display: flex;   
     padding: 10px 40px 10px;
     flex-direction: column;
@@ -200,6 +205,7 @@ $commentFade: .2s;
         background-position: center center;
         background-size: 180%;
         border-radius: 20%;
+        background-color: rgba(0, 0, 0, 0.5);
     }
 
     .music_info {
@@ -243,7 +249,7 @@ $commentFade: .2s;
         display: none;
     }
 
-    .reason{
+    .reason {
         display: flex;
         column-gap: 5px;
         padding: 0 10px;
@@ -296,7 +302,7 @@ $commentFade: .2s;
         }
     }
 
-    .title{
+    .title {
         display: flex;
         grid-area: titl;
         align-items: center;
@@ -326,7 +332,7 @@ $commentFade: .2s;
         column-gap: 5px;
     }
 
-    .rotate{
+    .rotate {
         grid-area: rota;
     }
 
@@ -334,11 +340,11 @@ $commentFade: .2s;
         grid-area: fave;
     }
 
-    .invisible{
+    .invisible {
         display: none;
     }
 
-    .rotate b{
+    .rotate b {
         color: #ffef00;
         font-size: 12px;
     }
@@ -348,7 +354,7 @@ $commentFade: .2s;
         height: 18px;
     }
 
-    .new_fav_icon i{
+    .new_fav_icon i {
         position: absolute;
         color: #ff33aa;
     }
@@ -357,11 +363,11 @@ $commentFade: .2s;
         font-size: 18px;
     }
 
-    i.in{
+    i.in {
         transform: scale(.5);
     }
 
-    i.out{
+    i.out {
         opacity: .5;
     }
 
@@ -380,7 +386,7 @@ $commentFade: .2s;
         color: #FFF;
     }
      
-    .comment_list{
+    .comment_list {
         display: flex;
         flex-direction: column;
         row-gap: 5px;
@@ -388,7 +394,7 @@ $commentFade: .2s;
         z-index: 1;
         padding: 0px 15px 5px;
 
-        &.empty{
+        &.empty {
             display: none;
         }
 
@@ -483,12 +489,12 @@ $commentFade: .2s;
         row-gap: 0px;
         padding: 0px 15px;
 
-        .comment{
+        .comment {
             transition: $commentFade 0s;
             opacity: 0;
         }
         
-        &, .comment * , .comment_text span{
+        &, .comment * , .comment_text span {
             transition: $commentResize $commentFade ;
         }
 
@@ -505,7 +511,7 @@ $commentFade: .2s;
     }
 }
 
-@media screen and (max-width: 1050px){
+@media screen and (max-width: 1050px) {
     #user_icon_scale {
         top: 280px!important;
     }
@@ -519,7 +525,7 @@ $commentFade: .2s;
     }
 }
 
-@media screen and (max-width: 900px){
+@media screen and (max-width: 900px) {
     #cafe.view_music_data #music_data {
         grid-row: 4 / 5;
         grid-column: 2 / 3;

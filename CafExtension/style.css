@@ -80,6 +80,10 @@
   color: #b6b6b6;
 }
 
+#music_description i {
+  font-style: italic !important;
+}
+
 #cafe.view_timetable #cafe_menu li.timetable {
   margin-right: 0px;
   margin-left: 10px;
@@ -191,6 +195,7 @@
   background-position: center center;
   background-size: 180%;
   border-radius: 20%;
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
 #timetable_list .music_info {

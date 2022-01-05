@@ -1,14 +1,17 @@
 'use strict';
 
 const settings = {
-	waitTime: 2000,
-	timetableLength: 100,
-	intervalTime: 1000,
-	colorThreshold: 6,
-	commmentFold: true,
-	displayReasonAll: true
+	waitTime: 3000, 
+	timetableLength: 100, 
+	intervalTime: 1000, 
+	colorThreshold: 6, 
+	commmentFold: true, 
+	displayReasonAll: true, 
+	apiLimitInterval: 1000, 
+	apiRetry: 3
 };
 
+const userData = {};
 class poolUserId{
 	constructor(){
 		this.pool = [];
@@ -119,8 +122,8 @@ async function callApi(url, queryParam = {}, count = 0) {
 	const nowtime = Date.now();
 	const queryUrl = Object.keys(queryParam).length ? '?'+new URLSearchParams(queryParam) : '';
 
-	if(nowtime - lastCallApi < 1000){
-		lastCallApi += 1000;
+	if(nowtime - lastCallApi < settings.apiLimitInterval){
+		lastCallApi += settings.apiLimitInterval;
 		await new Promise(r => setTimeout(r, lastCallApi - nowtime));
 	}else{
 		lastCallApi = nowtime;
@@ -133,9 +136,9 @@ async function callApi(url, queryParam = {}, count = 0) {
 		console.log(json);
 		return json;
 	}else{
-		if(3 <= count){
+		if(settings.apiRetry <= count && !!apiRetry){
 			console.error(url+queryParam, res);
-			return null
+			throw new Error('apiの呼び出しに失敗しました');
 		}else{
 			await new Promise(r => setTimeout(r, 500));
 			return await callApi(url, queryParam, count++);
@@ -250,76 +253,23 @@ function setMusicDetail(music_info){
 			new Notification(music_info.title);
 		});
 	}
+	console.log(music_info);
 
 	document.querySelector('#viewCounter').textContent = parseInt(music_info.viewCounter).toLocaleString();
 	document.querySelector('#mylistCounter').textContent = parseInt(music_info.mylistCounter).toLocaleString();
 	document.querySelector('#commentCounter').textContent = parseInt(music_info.thread.commentCounter).toLocaleString();
 	document.querySelector('#music_description').innerHTML = (
 		music_info.description
+			.replace(/<a.*?>(.*?)<\/a>/, '$1')
 			.replace(/https?:\/\/[\w!?/+\-~=;.,*&@#$%()'[\]]+/g, '<a href="$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w@])(mylist|user)\/\d+/g,'<a href="https://www.nicovideo.jp/$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w@])(sm|nm)\d+/g, '<a href="https://www.nicovideo.jp/watch/$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w@])nc\d+/g, '<a href="https://commons.nicovideo.jp/material/$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w@])co\d+/g, '<a href="https://com.nicovideo.jp/community/$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w])(@|＠)(\w+)/g, '<a href="https://twitter.com/$2" target="_blank">$&</a>')
-			.replace(/#[0-9a-fA-F]{6}/g, ((match) => {
-				let [r, g, b] = [parseInt(match.substr(1, 2), 16), parseInt(match.substr(3, 2), 16), parseInt(match.substr(5, 2), 16)];
-				const blightRatio = (_r, _g, _b) => {
-					[_r, _g, _b] = [Math.min(_r / 255, 1), Math.min(_g / 255, 1), Math.min(_b / 255, 1)];
-
-					return (
-						(_r <= .3298 ? _r / 12.92 : ((_r + .055) / 1.055) ** 2.4) * .2126 +
-						(_g <= .3298 ? _g / 12.92 : ((_g + .055) / 1.055) ** 2.4) * .7512 +
-						(_b <= .3298 ? _b / 12.92 : ((_b + .055) / 1.055) ** 2.4) * .0722 + 
-						.05
-					)/ .05
-				};
-
-				if(r === g && g === b){
-					[r, g, b] = [255 - r, 255 - g, 255 - b];
-				}else if(blightRatio(r, g, b) < settings.colorThreshold){
-					[r, g, b] = [r || 1, g || 1, b || 1];
-					let top = 255 / Math.min(r, g, b), bottom = 1,mag = (top + bottom)/ 2;
-
-					for(let i = 0; i < 8; i++){
-						if(blightRatio(r * mag, g * mag, b * mag) < settings.colorThreshold){
-							bottom = mag;
-						}else{
-							top = mag;
-						}
-						mag = (top + bottom)/ 2;
-					}
-					[r, g, b] = [Math.min(Math.round(r * mag), 255), Math.min(Math.round(g * mag), 255), Math.min(Math.round(b * mag), 255)]
-				}
-
-				return('#' + r.toString(16).padStart(2, '0') + g.toString(16).padStart(2, '0') + b.toString(16).padStart(2, '0'));
-			}))
+			.replace(/(?<![\/\w@＠])(mylist|user)\/\d+/g,'<a href="https://www.nicovideo.jp/$&" target="_blank">$&</a>')
+			.replace(/(?<![\/\w@＠])(sm|nm)\d+/g, '<a href="https://www.nicovideo.jp/watch/$&" target="_blank">$&</a>')
+			.replace(/(?<![\/\w@＠])nc\d+/g, '<a href="https://commons.nicovideo.jp/material/$&" target="_blank">$&</a>')
+			.replace(/(?<![\/\w@＠])co\d+/g, '<a href="https://com.nicovideo.jp/community/$&" target="_blank">$&</a>')
+			.replace(/(?<![\/\w])[@＠](\w+)/g, '<a href="https://twitter.com/$1" target="_blank">$&</a>')
+			.replace(/(?<=color: )[^;"]+/g, changeColor)
+			.replace(/<font(.*?)>(.*?)<\/font>/g, delFontTag)
 	);
-}
-
-const userData = {};
-async function setTimetable(dataArr, commentObj){
-	const timetable = document.createDocumentFragment();
-	const rotate_history = await callApi('/api/cafe/rotate_users', {ids: dataArr.map(e => e.id)});
-	const pool = new poolUserId();
-	
-	for(const music_data of dataArr){
-		const reason_user_id = music_data.reasons[0].user_id;
-		pool.add(reason_user_id);
-		pool.add(...music_data.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
-		if(commentObj[music_data.id] !== undefined){
-			pool.add(...commentObj[music_data.id].map(e => e.user_id));
-		}
-	}
-	
-	await pool.load();
-	
-	for(const music_data of dataArr){
-		timetable.append(createTimetableItem(music_data, rotate_history[music_data.id], commentObj[music_data.id]));
-	}
-	updateTimecounter(timetable);
-	
-	document.querySelector('#timetable_list').replaceChildren(timetable);
 }
 
 function createTimetableItem(music_data, rotate_data = null, comment_data = null){
@@ -475,14 +425,35 @@ let endtime = null;
 async function observeCafe(){
 	if(endtime === null){
 		const timetableData = await callApi('/api/cafe/timetable', {with_comment: 1, limit: settings.timetableLength});
+		const rotate_history = await callApi('/api/cafe/rotate_users', {ids: timetableData.map(e => e.id)});
+		const timetable = document.createDocumentFragment();
+		const pool = new poolUserId();
 		endtime = new Date(timetableData[0].start_time).getTime() + timetableData[0].msec_duration;
 		commentData[timetableData[0].id] ??= [];
-		await setTimetable(timetableData, commentData);
+		
+		for(const music_data of timetableData){
+			const reason_user_id = music_data.reasons[0].user_id;
+			pool.add(reason_user_id);
+			pool.add(...music_data.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
+			if(commentData[music_data.id] !== undefined){
+				pool.add(...commentData[music_data.id].map(e => e.user_id));
+			}
+		}
+		
+		await pool.load();
+		
+		for(const music_data of timetableData){
+			timetable.append(createTimetableItem(music_data, rotate_history[music_data.id], commentData[music_data.id]));
+		}
+		updateTimecounter(timetable);
+		
+		document.querySelector('#timetable_list').replaceChildren(timetable);
 	}else if(endtime + settings.waitTime < Date.now()){
 		const newItem = await callApi('/api/cafe/now_playing');
 		const pool = new poolUserId();
 		const lastId = document.querySelector(`#timetable_list .timetable_item:nth-child(${settings.timetableLength})`)?.dataset.id;
 		endtime = new Date(newItem.start_time).getTime() + newItem.msec_duration;
+		commentData[newItem.id] ??= [];
 		for(const comment_music_id of Object.keys(commentData)){
 			if(comment_music_id < lastId){
 				delete commentData[comment_music_id];
@@ -562,4 +533,95 @@ async function observeCafe(){
 		qsTimetableFirst.querySelector('.comment_list').append(timetableCommentCreate(newComments));
 		qsTimetableFirst.querySelector('.comment_list').classList.remove('empty');
 	}
+}
+
+function changeColor(color){
+	const blightRatio = (_r, _g, _b) => {
+		[_r, _g, _b] = [Math.min(_r / 255, 1), Math.min(_g / 255, 1), Math.min(_b / 255, 1)];
+
+		return (
+			(_r <= .3298 ? _r / 12.92 : ((_r + .055) / 1.055) ** 2.4) * .2126 +
+			(_g <= .3298 ? _g / 12.92 : ((_g + .055) / 1.055) ** 2.4) * .7512 +
+			(_b <= .3298 ? _b / 12.92 : ((_b + .055) / 1.055) ** 2.4) * .0722 + 
+			.05
+		)/ .05
+	};
+
+	let r, g, b;
+	console.log(color);
+
+	if(color.startsWith('rgba')){
+		const calc = (rgb, a) => rgb + (255 - rgb) * (1 - a);
+		let a;
+		[r, g, b, a] = color.match(/(?<=\().*?(?=\))/)[0].split(',').map(Number);
+		[r, g, b] = [calc(r, a), calc(g, a), calc(b, a)];
+	}else if(color.startsWith('rgb')){
+		[r, g, b] = color.match(/(?<=\().*?(?=\))/)[0].split(',').map(Number);
+	}else if(color.startsWith('#')){
+		[r, g, b] = color.match(/[\da-fA-F]{2}/g).map(d => parseInt(d, 16));
+	}else{
+		const canvas = document.createElement('canvas').getContext('2d');
+		canvas.fillStyle = color;
+		if(!canvas.fillStyle.startsWith('#')){
+			return 'rgb(255, 255, 255)'
+		}
+		[r, g, b] = canvas.fillStyle.match(/[\da-fA-F]{2}/g).map(d => parseInt(d, 16));
+	}
+
+	if(r === g && g === b){
+		[r, g, b] = [255 - r, 255 - g, 255 - b];
+	}else if(blightRatio(r, g, b) < settings.colorThreshold){
+		[r, g, b] = [r || 1, g || 1, b || 1];
+		let top = 255 / Math.min(r, g, b), bottom = 1,mag = (top + bottom)/ 2;
+
+		for(let i = 0; i < 8; i++){
+			if(blightRatio(r * mag, g * mag, b * mag) < settings.colorThreshold){
+				bottom = mag;
+			}else{
+				top = mag;
+			}
+			mag = (top + bottom)/ 2;
+		}
+		[r, g, b] = [Math.min(Math.round(r * mag), 255), Math.min(Math.round(g * mag), 255), Math.min(Math.round(b * mag), 255)]
+	}
+
+	return `rgb(${r}, ${g}, ${b})`;
+}
+
+function delFontTag(match, attributes, text){
+	let style = '';
+	if(attributes.search(/[^ ]/) !== -1){
+		style = ' style="';
+		for(const attr of attributes.trim().split(/(?<=") +/)){
+			const [propaty, value] = attr.replace(/"/g, '').split('=');
+			switch(propaty){
+				case 'color':
+					style += `color: ${changeColor(value)};`;
+					break;
+				case 'size':
+					let sizeVal = 0;
+					const sizeToPx = [8, 13, 16, 18, 24, 32, 48];
+					if(value.startsWith('+')){
+						sizeVal = 3 + Number(value.slice(1));
+					}else if(value.startsWith('-')){
+						sizeVal = 3 - Number(value.slice(1));
+					}else{
+						sizeVal = Number(value);
+					}
+					if(sizeVal < 1){
+						sizeVal = 1;
+					}else if(7 < sizeVal){
+						sizeVal = 7;
+					}
+					style += `font-size: ${sizeToPx[sizeVal - 1]};`;
+					break;
+				case 'face':
+					const fonts = value.split(/ *, */);
+					style += `font-family ${fonts.map(v => "'"+v+"'").join(', ')};`
+					break;
+			}
+		}
+		style += '"';
+	}
+	return `<span${style}>${text}</span>`;
 }
