@@ -11,15 +11,15 @@ const settings = {
 	apiRetry: 3
 };
 
-const userData = {};
-class poolUserId{
+const pool = new class{
+	userData = {};
 	constructor(){
 		this.pool = [];
 	}
 
 	add(...user_ids){
 		for(const user_id of user_ids){
-			if(userData[user_id] === undefined && !this.pool.includes(user_id)){
+			if(this.userData[user_id] === undefined && !this.pool.includes(user_id)){
 				this.pool.push(user_id);
 			}
 		}
@@ -29,15 +29,10 @@ class poolUserId{
 		if(!!this.pool.length){
 			const res = await callApi('/api/kiite_users', {user_ids: this.pool});
 			for(const user_data of res){
-				userData[user_data.user_id] = user_data;
+				this.userData[user_data.user_id] = user_data;
 			}
 		}
-		this.pool = [];
-	}
-
-	async addAndLoad(...user_ids){
-		this.add(...user_ids);
-		await this.load();
+		this.pool.length = 0;
 	}
 }
 
@@ -112,7 +107,6 @@ window.onload = () => {
 
 	storageGet('commentData').then(res => {
 		Object.assign(commentData, res);
-		console.log(commentData);
 		intervalCallFunc(observeCafe, settings.intervalTime);
 	})
 };
@@ -222,10 +216,10 @@ function setMenuDom(){
 		</div>
 	`);
 
-	const qsCafe = document.querySelector('#cafe'),
-		qsaMenuLi = document.querySelectorAll('#cafe_menu > ul > li'),
-		viewclass = Array.from(qsaMenuLi, v => `view_${v.dataset.val}`),
-		qsRdIcon = document.querySelector('#rd_toggle .material-icons');
+	const qsCafe = document.querySelector('#cafe');
+	const qsaMenuLi = document.querySelectorAll('#cafe_menu > ul > li');
+	const viewclass = Array.from(qsaMenuLi, v => `view_${v.dataset.val}`);
+	const qsRdIcon = document.querySelector('#rd_toggle .material-icons');
 
 	document.querySelector('#rd_toggle').onclick = () => {
 		qsRdIcon.textContent = (qsRdIcon.textContent === 'info') ? 'people' : 'info';
@@ -253,7 +247,6 @@ function setMusicDetail(music_info){
 			new Notification(music_info.title);
 		});
 	}
-	console.log(music_info);
 
 	document.querySelector('#viewCounter').textContent = parseInt(music_info.viewCounter).toLocaleString();
 	document.querySelector('#mylistCounter').textContent = parseInt(music_info.mylistCounter).toLocaleString();
@@ -303,7 +296,7 @@ function createTimetableItem(music_data, rotate_data = null, comment_data = null
 			if(!!reason_comment_users.length){
 				const reason_comment_data = [];
 				for(const priority_list of reason_comment_users){
-					userData[priority_list.user_id] ??= priority_list.user;
+					pool.userData[priority_list.user_id] ??= priority_list.user;
 					reason_comment_data.push({
 						user_id: priority_list.user_id, 
 						text: priority_list.playlist_comment, 
@@ -316,9 +309,9 @@ function createTimetableItem(music_data, rotate_data = null, comment_data = null
 			break;
 	}
 
-	newNode.querySelector('.reason .icon').style.backgroundImage = `url("${userData[reason.user_id].avatar_url}")`;
-	newNode.querySelector('.reason .user_name').textContent = userData[reason.user_id].nickname;
-	newNode.querySelector('.reason .user_name').href = `https://kiite.jp/user/${userData[reason.user_id].user_name}`;
+	newNode.querySelector('.reason .icon').style.backgroundImage = `url("${pool.userData[reason.user_id].avatar_url}")`;
+	newNode.querySelector('.reason .user_name').textContent = pool.userData[reason.user_id].nickname;
+	newNode.querySelector('.reason .user_name').href = `https://kiite.jp/user/${pool.userData[reason.user_id].user_name}`;
 
 	newNode.querySelector('.timetable_item').dataset.timestamp = new Date(music_data.start_time).getTime();
 	newNode.querySelector('.timetable_item').dataset.id = music_data.id;
@@ -374,7 +367,7 @@ function timetableCommentCreate(dataArr){
 	const commentList = document.createDocumentFragment();
 	for(const itemData of dataArr){
 		const newNode = timetableCommentTemplate.cloneNode(true);
-		newNode.querySelector('.comment_icon').style.backgroundImage = `url("${userData[itemData.user_id].avatar_url}")`;
+		newNode.querySelector('.comment_icon').style.backgroundImage = `url("${pool.userData[itemData.user_id].avatar_url}")`;
 		newNode.querySelector('.comment_text').textContent = itemData.text;
 		switch(itemData.type){
 			case 'presenter':
@@ -427,7 +420,6 @@ async function observeCafe(){
 		const timetableData = await callApi('/api/cafe/timetable', {with_comment: 1, limit: settings.timetableLength});
 		const rotate_history = await callApi('/api/cafe/rotate_users', {ids: timetableData.map(e => e.id)});
 		const timetable = document.createDocumentFragment();
-		const pool = new poolUserId();
 		endtime = new Date(timetableData[0].start_time).getTime() + timetableData[0].msec_duration;
 		commentData[timetableData[0].id] ??= [];
 		
@@ -450,7 +442,6 @@ async function observeCafe(){
 		document.querySelector('#timetable_list').replaceChildren(timetable);
 	}else if(endtime + settings.waitTime < Date.now()){
 		const newItem = await callApi('/api/cafe/now_playing');
-		const pool = new poolUserId();
 		const lastId = document.querySelector(`#timetable_list .timetable_item:nth-child(${settings.timetableLength})`)?.dataset.id;
 		endtime = new Date(newItem.start_time).getTime() + newItem.msec_duration;
 		commentData[newItem.id] ??= [];
@@ -462,7 +453,7 @@ async function observeCafe(){
 		pool.add(newItem.reasons[0].user_id);
 		pool.add(...newItem.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
 		await pool.load();
-		document.querySelectorAll('#timetable_list .timetable_item:nth-child(n + 100)').forEach(e => e.remove());
+		document.querySelectorAll(`#timetable_list .timetable_item:nth-child(n + ${settings.timetableLength})`).forEach(e => e.remove());
 		document.querySelector('#timetable_list').prepend(createTimetableItem(newItem));
 		updateTimecounter(document.querySelector('#timetable_list'));
 	}
@@ -495,7 +486,6 @@ async function observeCafe(){
 
 	const newComments = [];
 	const music_id = qsTimetableFirst.dataset.id;
-	const pool = new poolUserId();
 	for(const element of document.querySelectorAll('#cafe_space .user')){
 		const comment_user_id = element.dataset.user_id;
 		const comment_text = element.querySelector('.comment').textContent;
@@ -521,7 +511,7 @@ async function observeCafe(){
 		if(notice_flag && !document.hasFocus()){
 			Notification.requestPermission().then(() => {
 				for(const comment of newComments){
-					new Notification(comment.text,{ body : userData[comment.user_id].nickname });
+					new Notification(comment.text,{ body : pool.userData[comment.user_id].nickname });
 				}
 			});
 		}
@@ -548,7 +538,6 @@ function changeColor(color){
 	};
 
 	let r, g, b;
-	console.log(color);
 
 	if(color.startsWith('rgba')){
 		const calc = (rgb, a) => rgb + (255 - rgb) * (1 - a);
@@ -613,7 +602,7 @@ function delFontTag(match, attributes, text){
 					}else if(7 < sizeVal){
 						sizeVal = 7;
 					}
-					style += `font-size: ${sizeToPx[sizeVal - 1]};`;
+					style += `font-size: ${sizeToPx[sizeVal - 1]}px;`;
 					break;
 				case 'face':
 					const fonts = value.split(/ *, */);

@@ -74,6 +74,7 @@
   background: rgba(0, 0, 0, 0.5);
   overflow-y: scroll;
   word-wrap: break-word;
+  letter-spacing: 0px;
 }
 
 #music_description a {
@@ -81,7 +82,11 @@
 }
 
 #music_description i {
-  font-style: italic !important;
+  font-style: italic;
+}
+
+#music_description b {
+  font-weight: bolder;
 }
 
 #cafe.view_timetable #cafe_menu li.timetable {
@@ -145,22 +150,6 @@
 #timetable .exp {
   margin: 20px 10px 0px 40px;
   line-height: 1.5em;
-}
-
-#timetable_del_wrapper {
-  text-align: right;
-  margin-right: 42px;
-}
-
-#timetable_del {
-  color: #DDD;
-  display: inline;
-}
-
-#timetable_del:hover {
-  color: #FFF;
-  text-decoration: underline;
-  cursor: pointer;
 }
 
 #timetable_list {
