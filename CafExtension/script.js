@@ -1,15 +1,24 @@
 'use strict';
 
-const settings = {
-	waitTime: 3000, 
-	timetableLength: 100, 
-	intervalTime: 1000, 
-	colorThreshold: 6, 
-	commmentFold: true, 
-	displayReasonAll: true, 
-	apiLimitInterval: 1000, 
-	apiRetry: 3
+const apiOptions = {
+	min_interval: 1000, 
+	max_retry: 3
+}
+
+const defaultOptions = {
+	comment_fold: true, 
+	display_all: true,
+	timetable_max: 100,
+	wait_time: 3000,
+	interval_time: 1000,
+	color_threshold: 6,
 };
+
+const options = {};
+
+const optionsPromise = new Promise(resolve => {
+	chrome.storage.local.get({options: {}}, r => resolve(r.options));
+});
 
 const pool = new class{
 	userData = {};
@@ -64,8 +73,8 @@ const timetableItemTemplate = new Range().createContextualFragment(`
 				<a href="" target="_brank"><i class="material-icons">open_in_new</i></a>		
 			</div>
 		</div>
-		<div class="comment_list empty${settings.commmentFold ? ' folded' : ''}"></div>
-		<div class="comment_tail${settings.commmentFold ? '' : ' invisible'}">
+		<div class="comment_list empty folded"></div>
+		<div class="comment_tail">
 			<i class="material-icons">expand_more</i>
 		</div>
 	</div>
@@ -95,20 +104,26 @@ const reasonTextSpecialTemplate = new Range().createContextualFragment(`
 `);
 
 window.onload = () => {
-	setMenuDom();
-
-	chrome.storage.onChanged.addListener((changes, namespace) => {
-		for (const [key, {oldValue, newValue}] of Object.entries(changes)) {
-			if(key === 'music_data' && !!newValue.videoId){
-				setMusicDetail(newValue);
-			}
+	optionsPromise.then(optRes => {
+		for(const key of Object.keys(defaultOptions)){
+			options[key] = optRes[key] ?? defaultOptions[key]
 		}
-	});
+		console.log(options);
+		setMenuDom();
 
-	storageGet('commentData').then(res => {
-		Object.assign(commentData, res);
-		intervalCallFunc(observeCafe, settings.intervalTime);
-	})
+		chrome.storage.onChanged.addListener((changes, namespace) => {
+			for (const [key, {oldValue, newValue}] of Object.entries(changes)) {
+				if(key === 'music_data' && !!newValue.videoId){
+					setMusicDetail(newValue);
+				}
+			}
+		});
+
+		storageGet('commentData').then(res => {
+			Object.assign(commentData, res);
+			intervalCallFunc(observeCafe, options.interval_time);
+		})
+	});
 };
 
 let lastCallApi = 0;
@@ -116,8 +131,8 @@ async function callApi(url, queryParam = {}, count = 0) {
 	const nowtime = Date.now();
 	const queryUrl = Object.keys(queryParam).length ? '?'+new URLSearchParams(queryParam) : '';
 
-	if(nowtime - lastCallApi < settings.apiLimitInterval){
-		lastCallApi += settings.apiLimitInterval;
+	if(nowtime - lastCallApi < apiOptions.min_interval){
+		lastCallApi += apiOptions.min_interval;
 		await new Promise(r => setTimeout(r, lastCallApi - nowtime));
 	}else{
 		lastCallApi = nowtime;
@@ -130,7 +145,7 @@ async function callApi(url, queryParam = {}, count = 0) {
 		console.log(json);
 		return json;
 	}else{
-		if(settings.apiRetry <= count && !!apiRetry){
+		if(apiOptions.max_retry <= count && !!apiRetry){
 			console.error(url+queryParam, res);
 			throw new Error('apiの呼び出しに失敗しました');
 		}else{
@@ -274,13 +289,13 @@ function createTimetableItem(music_data, rotate_data = null, comment_data = null
 	switch(reason.type){
 		case 'favorite':
 			newNode.querySelector('.reason .text').append(reasonTextFavTemplate.cloneNode(true));
-			if(!settings.displayReasonAll){
+			if(!options.display_all){
 				newNode.querySelector('.reason').classList.add('invisible');
 			}
 			break;
 		case 'add_playlist':
 			newNode.querySelector('.reason .text').append(reasonTextPlaylistTemplate.cloneNode(true));
-			if(!settings.displayReasonAll){
+			if(!options.display_all){
 				newNode.querySelector('.reason').classList.add('invisible');
 			}
 			break;
@@ -321,6 +336,11 @@ function createTimetableItem(music_data, rotate_data = null, comment_data = null
 	newNode.querySelector('.artist').dataset.artist_id = music_data.artist_id;
 	newNode.querySelector('.artist span').textContent = music_data.artist_name;
 	newNode.querySelector('.source > a').href = `https://kiite.jp/search/song?keyword=${music_data.baseinfo.video_id}`;
+
+	if(!options.comment_fold){
+		newNode.querySelector('.comment_list').classList.remove('folded');
+		newNode.querySelector('.comment_tail').classList.add('invisible');
+	}
 
 	if(!!comment_data?.length){
 		newNode.querySelector('.comment_list').append(timetableCommentCreate(comment_data));
@@ -417,7 +437,7 @@ const commentData = {}, obsComment = {};
 let endtime = null;
 async function observeCafe(){
 	if(endtime === null){
-		const timetableData = await callApi('/api/cafe/timetable', {with_comment: 1, limit: settings.timetableLength});
+		const timetableData = await callApi('/api/cafe/timetable', {with_comment: 1, limit: options.timetable_max});
 		const rotate_history = await callApi('/api/cafe/rotate_users', {ids: timetableData.map(e => e.id)});
 		const timetable = document.createDocumentFragment();
 		endtime = new Date(timetableData[0].start_time).getTime() + timetableData[0].msec_duration;
@@ -440,9 +460,9 @@ async function observeCafe(){
 		updateTimecounter(timetable);
 		
 		document.querySelector('#timetable_list').replaceChildren(timetable);
-	}else if(endtime + settings.waitTime < Date.now()){
+	}else if(endtime + options.wait_time < Date.now()){
 		const newItem = await callApi('/api/cafe/now_playing');
-		const lastId = document.querySelector(`#timetable_list .timetable_item:nth-child(${settings.timetableLength})`)?.dataset.id;
+		const lastId = document.querySelector(`#timetable_list .timetable_item:nth-child(${options.timetable_max})`)?.dataset.id;
 		endtime = new Date(newItem.start_time).getTime() + newItem.msec_duration;
 		commentData[newItem.id] ??= [];
 		for(const comment_music_id of Object.keys(commentData)){
@@ -453,7 +473,7 @@ async function observeCafe(){
 		pool.add(newItem.reasons[0].user_id);
 		pool.add(...newItem.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
 		await pool.load();
-		document.querySelectorAll(`#timetable_list .timetable_item:nth-child(n + ${settings.timetableLength})`).forEach(e => e.remove());
+		document.querySelectorAll(`#timetable_list .timetable_item:nth-child(n + ${options.timetable_max})`).forEach(e => e.remove());
 		document.querySelector('#timetable_list').prepend(createTimetableItem(newItem));
 		updateTimecounter(document.querySelector('#timetable_list'));
 	}
@@ -526,6 +546,10 @@ async function observeCafe(){
 }
 
 function changeColor(color){
+	if(!options.color_threshold){
+		return color;
+	}
+
 	const blightRatio = (_r, _g, _b) => {
 		[_r, _g, _b] = [Math.min(_r / 255, 1), Math.min(_g / 255, 1), Math.min(_b / 255, 1)];
 
@@ -559,12 +583,12 @@ function changeColor(color){
 
 	if(r === g && g === b){
 		[r, g, b] = [255 - r, 255 - g, 255 - b];
-	}else if(blightRatio(r, g, b) < settings.colorThreshold){
+	}else if(blightRatio(r, g, b) < options.color_threshold){
 		[r, g, b] = [r || 1, g || 1, b || 1];
 		let top = 255 / Math.min(r, g, b), bottom = 1,mag = (top + bottom)/ 2;
 
 		for(let i = 0; i < 8; i++){
-			if(blightRatio(r * mag, g * mag, b * mag) < settings.colorThreshold){
+			if(blightRatio(r * mag, g * mag, b * mag) < options.color_threshold){
 				bottom = mag;
 			}else{
 				top = mag;

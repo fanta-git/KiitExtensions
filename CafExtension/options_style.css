@@ -1,0 +1,42 @@
+body {
+  background-color: gray;
+  color: white;
+}
+
+#options_wrapper {
+  width: 95%;
+  margin: 5px auto auto;
+  padding-left: 0;
+}
+
+.option_item {
+  display: flex;
+  padding: 3px;
+  border-radius: 3px;
+}
+
+.option_item:hover {
+  background-color: #555;
+}
+
+.option_item > input {
+  display: block;
+  margin-left: auto;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.option_item > input[type=number] {
+  width: 160px;
+}
+
+#option_buttons {
+  margin-top: 10px;
+  display: flex;
+  column-gap: 5px;
+}
+
+#reset_btn {
+  margin-left: auto;
+}
+/*# sourceMappingURL=options_style.css.map */

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>設定-KiitExtension</title>
+	<link rel="stylesheet" href="options_style.css">
+	<script src="option_script.js"></script>
+</head>
+
+<body>
+	<form id="options_wrapper" name="options_form">
+		<label class="option_item">
+			コメント欄を折りたたむ
+			<input type="checkbox" name="comment_fold" id="comment_fold">
+		</label>
+		<label class="option_item">
+			選曲理由を全て表示
+			<input type="checkbox" name="display_all" id="display_all">
+		</label>
+		<label class="option_item">
+			再生履歴の取得数
+			<input type="number" name="timetable_max" id="timetable_max" min="0" max="100">
+		</label>
+		<label class="option_item">
+			選曲履歴更新までの待機時間(ms)
+			<input type="number" name="wait_time" id="wait_time" min="0">
+		</label>
+		<label class="option_item">
+			回転数などを確認する間隔(ms)
+			<input type="number" name="interval_time" id="interval_time" min="0">
+		</label>
+		<label class="option_item">
+			動画説明文の文字色調整時の閾値
+			<input type="number" name="color_threshold" id="color_threshold" min="0" step="0.1">
+		</label>
+		<div id="option_buttons">
+			<button id="clear_btn" title="設定やコメント履歴を保存しているストレージを初期化します">データクリア</button>
+			<button id="reset_btn" title="全ての値を初期値に変更します">リセット</button>
+			<input type="submit" id="save_btn" title="現在の値を保存し設定画面を閉じます" value="保存する" />
+		</div>
+	</form>
+</body>
+</html>

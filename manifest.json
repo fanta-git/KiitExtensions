@@ -21,5 +21,8 @@
             "js" : ["CafExtension/iframe.js"],
             "all_frames": true
         }
-    ]
+    ],
+    "options_ui": {
+        "page": "CafExtension/options.html"
+    }
 }
