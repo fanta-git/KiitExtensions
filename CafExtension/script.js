@@ -7,11 +7,12 @@ const apiOptions = {
 
 const defaultOptions = {
 	comment_fold: true, 
-	display_all: true,
-	timetable_max: 100,
-	wait_time: 3000,
-	interval_time: 1000,
-	color_threshold: 6,
+	display_all: true, 
+	comment_log: true, 
+	timetable_max: 100, 
+	wait_time: 3000, 
+	interval_time: 1000, 
+	color_threshold: 6
 };
 
 const options = {};
@@ -20,13 +21,13 @@ const optionsPromise = new Promise(resolve => {
 	chrome.storage.local.get({options: {}}, r => resolve(r.options));
 });
 
-const pool = new class{
-	userData = {};
+const userIcons = new class {
 	constructor(){
+		this.userData = {};
 		this.pool = [];
 	}
 
-	add(...user_ids){
+	save(...user_ids){
 		for(const user_id of user_ids){
 			if(this.userData[user_id] === undefined && !this.pool.includes(user_id)){
 				this.pool.push(user_id);
@@ -37,11 +38,26 @@ const pool = new class{
 	async load(){
 		if(!!this.pool.length){
 			const res = await callApi('/api/kiite_users', {user_ids: this.pool});
-			for(const user_data of res){
-				this.userData[user_data.user_id] = user_data;
-			}
+			this.add(...res);
 		}
 		this.pool.length = 0;
+	}
+
+	add(...items){
+		for(const item of items){
+			this.userData[item.user_id] ??= item;
+		}
+	}
+
+	get(user_id){
+		const dammy = {
+			avatar_url: "https://kiite.jp/img/icon-user.jpg", 
+			id: null, 
+			nickname: "???", 
+			user_id: 0, 
+			user_name: ""
+		};
+		return this.userData?.[user_id] ?? dammy;
 	}
 }
 
@@ -311,7 +327,7 @@ function createTimetableItem(music_data, rotate_data = null, comment_data = null
 			if(!!reason_comment_users.length){
 				const reason_comment_data = [];
 				for(const priority_list of reason_comment_users){
-					pool.userData[priority_list.user_id] ??= priority_list.user;
+					userIcons.add(priority_list.user)
 					reason_comment_data.push({
 						user_id: priority_list.user_id, 
 						text: priority_list.playlist_comment, 
@@ -324,9 +340,10 @@ function createTimetableItem(music_data, rotate_data = null, comment_data = null
 			break;
 	}
 
-	newNode.querySelector('.reason .icon').style.backgroundImage = `url("${pool.userData[reason.user_id].avatar_url}")`;
-	newNode.querySelector('.reason .user_name').textContent = pool.userData[reason.user_id].nickname;
-	newNode.querySelector('.reason .user_name').href = `https://kiite.jp/user/${pool.userData[reason.user_id].user_name}`;
+	const userIconData = userIcons.get(reason.user_id)
+	newNode.querySelector('.reason .icon').style.backgroundImage = `url("${userIconData.avatar_url}")`;
+	newNode.querySelector('.reason .user_name').textContent = userIconData.nickname;
+	newNode.querySelector('.reason .user_name').href = `https://kiite.jp/user/${userIconData.user_name}`;
 
 	newNode.querySelector('.timetable_item').dataset.timestamp = new Date(music_data.start_time).getTime();
 	newNode.querySelector('.timetable_item').dataset.id = music_data.id;
@@ -342,7 +359,7 @@ function createTimetableItem(music_data, rotate_data = null, comment_data = null
 		newNode.querySelector('.comment_tail').classList.add('invisible');
 	}
 
-	if(!!comment_data?.length){
+	if(options.comment_log && !!comment_data?.length){
 		newNode.querySelector('.comment_list').append(timetableCommentCreate(comment_data));
 		newNode.querySelector('.comment_list').classList.remove('empty');
 	}
@@ -387,7 +404,7 @@ function timetableCommentCreate(dataArr){
 	const commentList = document.createDocumentFragment();
 	for(const itemData of dataArr){
 		const newNode = timetableCommentTemplate.cloneNode(true);
-		newNode.querySelector('.comment_icon').style.backgroundImage = `url("${pool.userData[itemData.user_id].avatar_url}")`;
+		newNode.querySelector('.comment_icon').style.backgroundImage = `url("${userIcons.get(itemData.user_id).avatar_url}")`;
 		newNode.querySelector('.comment_text').textContent = itemData.text;
 		switch(itemData.type){
 			case 'presenter':
@@ -445,14 +462,14 @@ async function observeCafe(){
 		
 		for(const music_data of timetableData){
 			const reason_user_id = music_data.reasons[0].user_id;
-			pool.add(reason_user_id);
-			pool.add(...music_data.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
+			userIcons.save(reason_user_id);
+			userIcons.save(...music_data.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
 			if(commentData[music_data.id] !== undefined){
-				pool.add(...commentData[music_data.id].map(e => e.user_id));
+				userIcons.save(...commentData[music_data.id].map(e => e.user_id));
 			}
 		}
 		
-		await pool.load();
+		await userIcons.load();
 		
 		for(const music_data of timetableData){
 			timetable.append(createTimetableItem(music_data, rotate_history[music_data.id], commentData[music_data.id]));
@@ -470,9 +487,9 @@ async function observeCafe(){
 				delete commentData[comment_music_id];
 			}
 		}
-		pool.add(newItem.reasons[0].user_id);
-		pool.add(...newItem.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
-		await pool.load();
+		userIcons.save(newItem.reasons[0].user_id);
+		userIcons.save(...newItem.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
+		await userIcons.load();
 		document.querySelectorAll(`#timetable_list .timetable_item:nth-child(n + ${options.timetable_max})`).forEach(e => e.remove());
 		document.querySelector('#timetable_list').prepend(createTimetableItem(newItem));
 		updateTimecounter(document.querySelector('#timetable_list'));
@@ -519,19 +536,19 @@ async function observeCafe(){
 					type: 'user'
 				});
 	
-				pool.add(comment_user_id);
+				userIcons.save(comment_user_id);
 			}
 			obsComment[comment_user_id] = comment_text;
 		}
 	}
 
 	if(!!newComments.length){
-		await pool.load();
+		await userIcons.load();
 
 		if(notice_flag && !document.hasFocus()){
 			Notification.requestPermission().then(() => {
 				for(const comment of newComments){
-					new Notification(comment.text,{ body : pool.userData[comment.user_id].nickname });
+					new Notification(comment.text,{ body : userIcons.get(comment.user_id).nickname });
 				}
 			});
 		}
@@ -540,8 +557,10 @@ async function observeCafe(){
 
 		storageSet('commentData', commentData);
 		
-		qsTimetableFirst.querySelector('.comment_list').append(timetableCommentCreate(newComments));
-		qsTimetableFirst.querySelector('.comment_list').classList.remove('empty');
+		if(options.comment_log){
+			qsTimetableFirst.querySelector('.comment_list').append(timetableCommentCreate(newComments));
+			qsTimetableFirst.querySelector('.comment_list').classList.remove('empty');
+		}
 	}
 }
 

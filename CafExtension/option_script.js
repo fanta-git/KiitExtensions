@@ -1,10 +1,11 @@
 const defaultOptions = {
 	comment_fold: true, 
 	display_all: true,
+	comment_log: true, 
 	timetable_max: 100,
 	wait_time: 3000,
 	interval_time: 1000,
-	color_threshold: 6,
+	color_threshold: 6
 };
 
 const optionsPromise = new Promise(resolve => {
@@ -19,23 +20,23 @@ window.onload = () => {
 		}
 		setValue(options);
 	
+		document.querySelector('#options_wrapper').onsubmit = event => {
+			event.preventDefault();
+			saveValue().then(window.close);
+		};
+	
 		document.querySelector('#reset_btn').onclick = () => {
 			setValue(defaultOptions);
 		};
 	
-		document.querySelector('#options_wrapper').onsubmit = () => {
-			saveValue().then(window.close);
-		};
-	
-		document.querySelector('#clear_btn').onclick = event => {
-			event.preventDefault();
+		document.querySelector('#clear_btn').onclick = () => {
 			chrome.storage.local.clear().then(window.close);
 		};
 	});
 }
 
 function setValue(setOptions){
-	for(const optionDom of document.querySelectorAll('.option_item > input')){
+	for(const optionDom of document.options_form.elements){
 		switch(optionDom.type){
 			case "checkbox":
 				optionDom.checked = setOptions[optionDom.name];
@@ -49,7 +50,7 @@ function setValue(setOptions){
 
 function saveValue(){
 	const saveOptions = {};
-	for(const optionDom of document.querySelectorAll('.option_item > input')){
+	for(const optionDom of document.options_form.elements){
 		switch(optionDom.type){
 			case "checkbox":
 				saveOptions[optionDom.name] = optionDom.checked;
