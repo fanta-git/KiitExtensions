@@ -1,12 +1,7 @@
 'use strict';
 
-const apiOptions = {
-	min_interval: 1000, 
-	max_retry: 3
-}
-
-const defaultOptions = {
-	comment_fold: true, 
+const options = {
+	comment_fold: false, 
 	display_all: true, 
 	comment_log: true, 
 	timetable_max: 100, 
@@ -15,11 +10,32 @@ const defaultOptions = {
 	color_threshold: 6
 };
 
-const options = {};
+window.onload = () => {
+	storageGet('options').then(optRes => {
+		Object.assign(options, optRes ?? {});
+		setMenuDom();
 
-const optionsPromise = new Promise(resolve => {
-	chrome.storage.local.get({options: {}}, r => resolve(r.options));
-});
+		chrome.storage.onChanged.addListener((changes, namespace) => {
+			for (const [key, {oldValue, newValue}] of Object.entries(changes)) {
+				if(key === 'music_data' && !!newValue.videoId){
+					setMusicDetail(newValue);
+				}else if(key === 'options'){
+					location.reload();
+				}
+			}
+		});
+
+		intervalCallFunc(options.interval_time, observeCafe);
+	});
+};
+
+async function intervalCallFunc(interval, func){
+	while(true){
+		const funcret = func();
+		await new Promise(r => setTimeout(r, interval));
+		await funcret;
+	}
+}
 
 const userIcons = new class {
 	constructor(){
@@ -61,109 +77,30 @@ const userIcons = new class {
 	}
 }
 
-const timetableItemTemplate = new Range().createContextualFragment(`
-	<div class="timetable_item" data-timestamp="">
-		<div class="bg_black"></div>
-		<div class="thumbnail" style=""></div>
-		<div class="music_info">
-			<div class="onair">ON AIR</div>
-			<div class="timestamp">**分前</div>
-			<div class="reason">
-				<div class="icon" style=""></div>
-				<div class="text"></div>
-			</div>
-			<div class="title"></div>
-			<div class="artist"><span></span></div>
-			<div class="rotate invisible">
-				<b>回</b>
-				<span class="count"></span>
-			</div>
-			<div class="new_fav invisible">
-				<span class="new_fav_icon">
-					<i class="material-icons in">favorite</i>
-					<i class="material-icons out">favorite</i>
-				</span>
-				<span class="count"></span>
-			</div>
-			<div class="source">
-				<a href="" target="_brank"><i class="material-icons">open_in_new</i></a>		
-			</div>
-		</div>
-		<div class="comment_list empty folded"></div>
-		<div class="comment_tail">
-			<i class="material-icons">expand_more</i>
-		</div>
-	</div>
-`);
-
-const timetableCommentTemplate = new Range().createContextualFragment(`
-	<div class="comment">
-		<div class="comment_icon" style=""></div>
-		<div class="comment_text"></div>
-	</div>
-`);
-
-const reasonTextPriorityTemplate = new Range().createContextualFragment(`
-	<a class="user_name" href="" target="_blank"></a>さんの<a class="priority_list" href="" target="_blank">イチ推しリスト</a>の曲です
-`);
-
-const reasonTextFavTemplate = new Range().createContextualFragment(`
-	<a class="user_name" href="" target="_blank"></a>さんの<b class="fav">お気に入り</b>の曲です
-`);
-
-const reasonTextPlaylistTemplate = new Range().createContextualFragment(`
-	<a class="user_name" href="" target="_blank"></a>さんの<b class="playlist">プレイリスト</b>の曲です
-`);
-
-const reasonTextSpecialTemplate = new Range().createContextualFragment(`
-	<a class="user_name" href="" target="_blank"></a>さんの<b class="special_list">特別メニュー</b>の曲です
-`);
-
-window.onload = () => {
-	optionsPromise.then(optRes => {
-		for(const key of Object.keys(defaultOptions)){
-			options[key] = optRes[key] ?? defaultOptions[key]
-		}
-		console.log(options);
-		setMenuDom();
-
-		chrome.storage.onChanged.addListener((changes, namespace) => {
-			for (const [key, {oldValue, newValue}] of Object.entries(changes)) {
-				if(key === 'music_data' && !!newValue.videoId){
-					setMusicDetail(newValue);
-				}
-			}
-		});
-
-		storageGet('commentData').then(res => {
-			Object.assign(commentData, res);
-			intervalCallFunc(observeCafe, options.interval_time);
-		})
-	});
-};
-
-let lastCallApi = 0;
 async function callApi(url, queryParam = {}, count = 0) {
 	const nowtime = Date.now();
 	const queryUrl = Object.keys(queryParam).length ? '?'+new URLSearchParams(queryParam) : '';
+	const stc = (callApi.stc ??= {lastCallApi: 0});
+	const api_min_interval = 1000;
+	const api_max_retry = 3;
 
-	if(nowtime - lastCallApi < apiOptions.min_interval){
-		lastCallApi += apiOptions.min_interval;
-		await new Promise(r => setTimeout(r, lastCallApi - nowtime));
+	if(nowtime - stc.lastCallApi < api_min_interval){
+		stc.lastCallApi += api_min_interval;
+		await new Promise(r => setTimeout(r, stc.lastCallApi - nowtime));
 	}else{
-		lastCallApi = nowtime;
+		stc.lastCallApi = nowtime;
 	}
 
 	const res = await fetch(url+queryUrl);
 
 	if(res.status === 200){
 		const json = await res.json();
-		console.log(json);
+		console.log('API', json);
 		return json;
 	}else{
-		if(apiOptions.max_retry <= count && !!apiRetry){
-			console.error(url+queryParam, res);
-			throw new Error('apiの呼び出しに失敗しました');
+		if(api_max_retry <= count && !!apiRetry){
+			console.log('Error', {url: url, queryParam: queryParam, res: res});
+			throw Error('APIの読み込みに失敗しました');
 		}else{
 			await new Promise(r => setTimeout(r, 500));
 			return await callApi(url, queryParam, count++);
@@ -173,13 +110,13 @@ async function callApi(url, queryParam = {}, count = 0) {
 
 function storageGet(key){
 	return new Promise(resolve => {
-		chrome.storage.local.get(key, r => resolve(r[key]))
+		chrome.storage.local.get(key, r => (console.log('GET', r), resolve(r[key])))
 	});
 }
 
 function storageSet(key, value){
 	return new Promise(resolve => {
-		chrome.storage.local.set({[key]: value}, resolve)
+		chrome.storage.local.set({[key]: value}, r => (console.log('SET', {[key]: value}), resolve(r)))
 	});
 }
 
@@ -286,40 +223,77 @@ function setMusicDetail(music_info){
 		music_info.description
 			.replace(/<a.*?>(.*?)<\/a>/, '$1')
 			.replace(/https?:\/\/[\w!?/+\-~=;.,*&@#$%()'[\]]+/g, '<a href="$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w@＠])(mylist|user)\/\d+/g,'<a href="https://www.nicovideo.jp/$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w@＠])(sm|nm)\d+/g, '<a href="https://www.nicovideo.jp/watch/$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w@＠])nc\d+/g, '<a href="https://commons.nicovideo.jp/material/$&" target="_blank">$&</a>')
-			.replace(/(?<![\/\w@＠])co\d+/g, '<a href="https://com.nicovideo.jp/community/$&" target="_blank">$&</a>')
+			.replace(/(?<![\/\w@＠])(mylist\/|user\/|series\/|sm|nm|so|nc|co)\d+/g, nicoURL)
 			.replace(/(?<![\/\w])[@＠](\w+)/g, '<a href="https://twitter.com/$1" target="_blank">$&</a>')
-			.replace(/(?<=color: )[^;"]+/g, changeColor)
+			.replace(/(?<=color:)[^;"]+/g, changeColor)
 			.replace(/<font(.*?)>(.*?)<\/font>/g, delFontTag)
 	);
 }
 
-function createTimetableItem(music_data, rotate_data = null, comment_data = null){
-	// const reasonSearch = data => data.reasons.find(e => e.user_id === data.request_user_ids[0]);
+function createTimetableItem(music_data, rotate_data, comment_data){
+	const stc = (createTimetableItem.stc ??= {
+		reasonTextPriorityTemplate: new Range().createContextualFragment(`<a class="user_name" href="" target="_blank"></a>さんの<a class="priority_list" href="" target="_blank">イチ推しリスト</a>の曲です`),
+		reasonTextFavTemplate: new Range().createContextualFragment(`<a class="user_name" href="" target="_blank"></a>さんの<b class="fav">お気に入り</b>の曲です`),
+		reasonTextPlaylistTemplate: new Range().createContextualFragment(`<a class="user_name" href="" target="_blank"></a>さんの<b class="playlist">プレイリスト</b>の曲です`),
+		reasonTextSpecialTemplate: new Range().createContextualFragment(`<a class="user_name" href="" target="_blank"></a>さんの<b class="special_list">特別メニュー</b>の曲です`), 
+		timetableItemTemplate: new Range().createContextualFragment(`
+			<div class="timetable_item" data-timestamp="">
+				<div class="bg_black"></div>
+				<div class="thumbnail" style=""></div>
+				<div class="music_info">
+					<div class="onair">ON AIR</div>
+					<div class="timestamp">**分前</div>
+					<div class="reason">
+						<div class="icon" style=""></div>
+						<div class="text"></div>
+					</div>
+					<div class="title"></div>
+					<div class="artist"><span></span></div>
+					<div class="rotate invisible">
+						<b>回</b>
+						<span class="count"></span>
+					</div>
+					<div class="new_fav invisible">
+						<span class="new_fav_icon">
+							<i class="material-icons in">favorite</i>
+							<i class="material-icons out">favorite</i>
+						</span>
+						<span class="count"></span>
+					</div>
+					<div class="source">
+						<a href="" target="_brank"><i class="material-icons">open_in_new</i></a>		
+					</div>
+				</div>
+				<div class="comment_list empty folded"></div>
+				<div class="comment_tail">
+					<i class="material-icons">expand_more</i>
+				</div>
+			</div>
+		`)
+	});
 	const reason = music_data.reasons[0];
 	const newNode = document.createDocumentFragment();
-	newNode.append(timetableItemTemplate.cloneNode(true));
+
+	newNode.append(stc.timetableItemTemplate.cloneNode(true));
 	
 	switch(reason.type){
 		case 'favorite':
-			newNode.querySelector('.reason .text').append(reasonTextFavTemplate.cloneNode(true));
+			newNode.querySelector('.reason .text').append(stc.reasonTextFavTemplate.cloneNode(true));
 			if(!options.display_all){
 				newNode.querySelector('.reason').classList.add('invisible');
 			}
 			break;
 		case 'add_playlist':
-			newNode.querySelector('.reason .text').append(reasonTextPlaylistTemplate.cloneNode(true));
+			newNode.querySelector('.reason .text').append(stc.reasonTextPlaylistTemplate.cloneNode(true));
 			if(!options.display_all){
 				newNode.querySelector('.reason').classList.add('invisible');
 			}
 			break;
 		case 'priority_playlist':
 			if(!!music_data.presenter_user_ids?.includes(reason.user_id)){
-				newNode.querySelector('.reason .text').append(reasonTextSpecialTemplate.cloneNode(true));
+				newNode.querySelector('.reason .text').append(stc.reasonTextSpecialTemplate.cloneNode(true));
 			}else{
-				newNode.querySelector('.reason .text').append(reasonTextPriorityTemplate.cloneNode(true));
+				newNode.querySelector('.reason .text').append(stc.reasonTextPriorityTemplate.cloneNode(true));
 				newNode.querySelector('.reason .priority_list').href = `https://kiite.jp/playlist/${reason.list_id}`;
 			}
 
@@ -401,9 +375,18 @@ function createTimetableItem(music_data, rotate_data = null, comment_data = null
 }
 
 function timetableCommentCreate(dataArr){
+	const stc = (timetableCommentCreate.stc ??= {
+		timetableCommentTemplate: new Range().createContextualFragment(`
+			<div class="comment">
+				<div class="comment_icon" style=""></div>
+				<div class="comment_text"></div>
+			</div>
+		`)
+	});
+
 	const commentList = document.createDocumentFragment();
 	for(const itemData of dataArr){
-		const newNode = timetableCommentTemplate.cloneNode(true);
+		const newNode = stc.timetableCommentTemplate.cloneNode(true);
 		newNode.querySelector('.comment_icon').style.backgroundImage = `url("${userIcons.get(itemData.user_id).avatar_url}")`;
 		newNode.querySelector('.comment_text').textContent = itemData.text;
 		switch(itemData.type){
@@ -442,49 +425,42 @@ function updateTimecounter(timetable){
 	});
 }
 
-async function intervalCallFunc(func, interval){
-	while(true){
-		const funcret = func();
-		await new Promise(r => setTimeout(r, interval));
-		await funcret;
-	}
-}
-
-const commentData = {}, obsComment = {};
-let endtime = null;
 async function observeCafe(){
-	if(endtime === null){
+	const stc = (observeCafe.stc ??= {endtime: null, commentData: {}, obsComment: {}});
+	if(stc.endtime === null){
 		const timetableData = await callApi('/api/cafe/timetable', {with_comment: 1, limit: options.timetable_max});
 		const rotate_history = await callApi('/api/cafe/rotate_users', {ids: timetableData.map(e => e.id)});
+		stc.commentData = await storageGet('commentData') ?? {};
+		stc.commentData[timetableData[0].id] ??= [];
+
 		const timetable = document.createDocumentFragment();
-		endtime = new Date(timetableData[0].start_time).getTime() + timetableData[0].msec_duration;
-		commentData[timetableData[0].id] ??= [];
+		stc.endtime = new Date(timetableData[0].start_time).getTime() + timetableData[0].msec_duration;
 		
 		for(const music_data of timetableData){
 			const reason_user_id = music_data.reasons[0].user_id;
 			userIcons.save(reason_user_id);
 			userIcons.save(...music_data.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
-			if(commentData[music_data.id] !== undefined){
-				userIcons.save(...commentData[music_data.id].map(e => e.user_id));
+			if(stc.commentData[music_data.id] !== undefined){
+				userIcons.save(...stc.commentData[music_data.id].map(e => e.user_id));
 			}
 		}
 		
 		await userIcons.load();
 		
 		for(const music_data of timetableData){
-			timetable.append(createTimetableItem(music_data, rotate_history[music_data.id], commentData[music_data.id]));
+			timetable.append(createTimetableItem(music_data, rotate_history[music_data.id], stc.commentData[music_data.id]));
 		}
 		updateTimecounter(timetable);
 		
 		document.querySelector('#timetable_list').replaceChildren(timetable);
-	}else if(endtime + options.wait_time < Date.now()){
+	}else if(stc.endtime + options.wait_time < Date.now()){
 		const newItem = await callApi('/api/cafe/now_playing');
 		const lastId = document.querySelector(`#timetable_list .timetable_item:nth-child(${options.timetable_max})`)?.dataset.id;
-		endtime = new Date(newItem.start_time).getTime() + newItem.msec_duration;
-		commentData[newItem.id] ??= [];
-		for(const comment_music_id of Object.keys(commentData)){
+		stc.endtime = new Date(newItem.start_time).getTime() + newItem.msec_duration;
+		stc.commentData[newItem.id] ??= [];
+		for(const comment_music_id of Object.keys(stc.commentData)){
 			if(comment_music_id < lastId){
-				delete commentData[comment_music_id];
+				delete stc.commentData[comment_music_id];
 			}
 		}
 		userIcons.save(newItem.reasons[0].user_id);
@@ -526,9 +502,9 @@ async function observeCafe(){
 	for(const element of document.querySelectorAll('#cafe_space .user')){
 		const comment_user_id = element.dataset.user_id;
 		const comment_text = element.querySelector('.comment').textContent;
-		if(obsComment[comment_user_id] === undefined){
-			obsComment[comment_user_id] = comment_text;
-		}else if(obsComment[comment_user_id] !== comment_text){
+		if(stc.obsComment[comment_user_id] === undefined){
+			stc.obsComment[comment_user_id] = comment_text;
+		}else if(stc.obsComment[comment_user_id] !== comment_text){
 			if(comment_text !== ''){
 				newComments.push({
 					user_id: comment_user_id, 
@@ -538,7 +514,7 @@ async function observeCafe(){
 	
 				userIcons.save(comment_user_id);
 			}
-			obsComment[comment_user_id] = comment_text;
+			stc.obsComment[comment_user_id] = comment_text;
 		}
 	}
 
@@ -553,9 +529,9 @@ async function observeCafe(){
 			});
 		}
 
-		commentData[music_id].push(...newComments);
+		stc.commentData[music_id].push(...newComments);
 
-		storageSet('commentData', commentData);
+		storageSet('commentData', stc.commentData);
 		
 		if(options.comment_log){
 			qsTimetableFirst.querySelector('.comment_list').append(timetableCommentCreate(newComments));
@@ -568,6 +544,8 @@ function changeColor(color){
 	if(!options.color_threshold){
 		return color;
 	}
+
+	color = color.trim();
 
 	const blightRatio = (_r, _g, _b) => {
 		[_r, _g, _b] = [Math.min(_r / 255, 1), Math.min(_g / 255, 1), Math.min(_b / 255, 1)];
@@ -656,4 +634,31 @@ function delFontTag(match, attributes, text){
 		style += '"';
 	}
 	return `<span${style}>${text}</span>`;
+}
+
+function nicoURL(match, type){
+	let url;
+
+	switch(type){
+		case 'mylist/':
+		case 'user/':
+			url = 'https://www.nicovideo.jp/'+match;
+			break;
+		case 'series/':
+			url = 'https://www.nicovideo.jp/' + match;
+			break;
+		case 'sm':
+		case 'nm':
+		case 'so':
+			url = 'https://www.nicovideo.jp/watch/'+match;
+			break;
+		case 'nc':
+			url = 'https://commons.nicovideo.jp/material/'+match;
+			break;
+		case 'co':
+			url = 'https://com.nicovideo.jp/community/'+match;
+			break;
+	}
+
+	return `<a href="${url}" target="_blank">${match}</a>`
 }

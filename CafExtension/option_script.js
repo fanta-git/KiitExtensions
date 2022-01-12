@@ -1,7 +1,7 @@
 const defaultOptions = {
 	comment_fold: true, 
 	display_all: true,
-	comment_log: true, 
+	comment_log: false, 
 	timetable_max: 100,
 	wait_time: 3000,
 	interval_time: 1000,

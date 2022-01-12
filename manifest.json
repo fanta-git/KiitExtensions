@@ -23,6 +23,7 @@
         }
     ],
     "options_ui": {
-        "page": "CafExtension/options.html"
+        "page": "CafExtension/options.html", 
+        "browser_style": false
     }
 }
