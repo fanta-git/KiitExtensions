@@ -4,10 +4,12 @@ const options = {
 	comment_fold: false, 
 	display_all: true, 
 	comment_log: true, 
+	notification_music: true, 
+	notification_comment: true, 
 	timetable_max: 100, 
 	wait_time: 3000, 
 	interval_time: 1000, 
-	color_threshold: 6
+	color_threshold: 6, 
 };
 
 window.onload = () => {
@@ -15,12 +17,18 @@ window.onload = () => {
 		Object.assign(options, optRes ?? {});
 		setMenuDom();
 
+		window.addEventListener('focus', _ => notification.close());
+
 		chrome.storage.onChanged.addListener((changes, namespace) => {
 			for (const [key, {oldValue, newValue}] of Object.entries(changes)) {
-				if(key === 'music_data' && !!newValue.videoId){
-					setMusicDetail(newValue);
-				}else if(key === 'options'){
-					location.reload();
+				console.log('CHANGED', newValue);
+				switch(key){
+					case 'music_data':
+						if(newValue) setMusicDetail(newValue);
+						break;
+					case 'options':
+						location.reload();
+						break;
 				}
 			}
 		});
@@ -45,14 +53,12 @@ const userIcons = new class {
 
 	save(...user_ids){
 		for(const user_id of user_ids){
-			if(this.userData[user_id] === undefined && !this.pool.includes(user_id)){
-				this.pool.push(user_id);
-			}
+			if(this.userData[user_id] === undefined && !this.pool.includes(user_id)) this.pool.push(user_id);
 		}
 	}
 
 	async load(){
-		if(!!this.pool.length){
+		if(this.pool.length){
 			const res = await callApi('/api/kiite_users', {user_ids: this.pool});
 			this.add(...res);
 		}
@@ -77,6 +83,43 @@ const userIcons = new class {
 	}
 }
 
+const notification = new class {
+	flag;
+	constructor(){
+		this.ntcList = [];
+	}
+
+	send(text, opt = {}){
+		if(this.flag && !document.hasFocus()){
+			const ntcItem = new Notification(text, opt);
+			this.ntcList.push(ntcItem);
+		}
+	}
+
+	close(){
+		for(const item of this.ntcList) item.close();
+	}
+
+	set(e){
+		storageGet('ntc_flag').then(res => {
+			this.flag = res ?? false;
+			e.querySelector('.material-icons').textContent = (this.flag ? 'notifications_active' : 'notifications_off');
+		});
+	}
+
+	toggle(e){
+		const ct = e.currentTarget;
+		
+		Notification.requestPermission().then(res => {
+			if(res === 'granted' || this.flag){
+				this.flag = !this.flag;
+				storageSet('ntc_flag', this.flag);
+				ct.querySelector('.material-icons').textContent = (this.flag ? 'notifications_active' : 'notifications_off');
+			}
+		});
+	}
+}
+
 async function callApi(url, queryParam = {}, count = 0) {
 	const nowtime = Date.now();
 	const queryUrl = Object.keys(queryParam).length ? '?'+new URLSearchParams(queryParam) : '';
@@ -98,7 +141,7 @@ async function callApi(url, queryParam = {}, count = 0) {
 		console.log('API', json);
 		return json;
 	}else{
-		if(api_max_retry <= count && !!apiRetry){
+		if(api_max_retry <= count && apiRetry){
 			console.log('Error', {url: url, queryParam: queryParam, res: res});
 			throw Error('APIの読み込みに失敗しました');
 		}else{
@@ -109,32 +152,33 @@ async function callApi(url, queryParam = {}, count = 0) {
 }
 
 function storageGet(key){
-	return new Promise(resolve => {
-		chrome.storage.local.get(key, r => (console.log('GET', r), resolve(r[key])))
-	});
+	return new Promise(resolve => (
+		chrome.storage.local.get(key, r => {
+			console.log('GET', r), resolve(typeof key === 'object' ? r: r[key])
+		})
+	));
 }
 
 function storageSet(key, value){
-	return new Promise(resolve => {
-		chrome.storage.local.set({[key]: value}, r => (console.log('SET', {[key]: value}), resolve(r)))
-	});
+	return new Promise(resolve => (
+		chrome.storage.local.set({[key]: value}, r => {
+			console.log('SET', {[key]: value});
+			resolve(r);
+		})
+	));
 }
 
-let notice_flag = false;
 function setMenuDom(){
 	document.querySelector('#now_playing_info .source').insertAdjacentHTML('afterend', `
 		<div class="rd_toggle" id="rd_toggle">
 			<i class="material-icons">info</i>
 		</div>
 		<div class="ntc_toggle" id="ntc_toggle">
-			<i class="material-icons">${notice_flag ? 'notifications_active' : 'notifications_off'}</i>
+			<i class="material-icons"></i>
 		</div>
 	`);
 
-	storageGet('ntc_flag').then(res => {
-		notice_flag = res;
-		document.querySelector('#ntc_toggle .material-icons').textContent = (notice_flag ? 'notifications_active' : 'notifications_off');
-	});
+	notification.set(document.querySelector('#ntc_toggle'));
 
 	document.querySelector('#reasons').insertAdjacentHTML('afterend', `
 		<div id="music_data">
@@ -194,12 +238,11 @@ function setMenuDom(){
 		qsCafe.classList.toggle('view_music_data');
 	};
 
-	document.querySelector('#ntc_toggle').onclick = () => {
-		Notification.requestPermission();
-		notice_flag = !notice_flag;
-		storageSet('ntc_flag', notice_flag);
-		document.querySelector('#ntc_toggle .material-icons').textContent = (notice_flag ? 'notifications_active' : 'notifications_off');
-	};
+	if(options.notification_music || options.notification_comment){
+		document.querySelector('#ntc_toggle').onclick = e => notification.toggle(e);
+	}else{
+		document.querySelector('#ntc_toggle').remove();
+	}
 
 	for(const element of qsaMenuLi){
 		document.querySelector(`#cafe_menu > ul > li.${element.dataset.val}`).onclick = () => {
@@ -210,11 +253,7 @@ function setMenuDom(){
 }
 
 function setMusicDetail(music_info){
-	if(notice_flag && !document.hasFocus()){
-		Notification.requestPermission().then(() => {
-			new Notification(music_info.title);
-		});
-	}
+	if(options.notification_music) notification.send(music_info.title, { icon: music_info.thumbnailUrl });
 
 	document.querySelector('#viewCounter').textContent = parseInt(music_info.viewCounter).toLocaleString();
 	document.querySelector('#mylistCounter').textContent = parseInt(music_info.mylistCounter).toLocaleString();
@@ -279,26 +318,22 @@ function createTimetableItem(music_data, rotate_data, comment_data){
 	switch(reason.type){
 		case 'favorite':
 			newNode.querySelector('.reason .text').append(stc.reasonTextFavTemplate.cloneNode(true));
-			if(!options.display_all){
-				newNode.querySelector('.reason').classList.add('invisible');
-			}
+			if(!options.display_all) newNode.querySelector('.reason').classList.add('invisible');
 			break;
 		case 'add_playlist':
 			newNode.querySelector('.reason .text').append(stc.reasonTextPlaylistTemplate.cloneNode(true));
-			if(!options.display_all){
-				newNode.querySelector('.reason').classList.add('invisible');
-			}
+			if(!options.display_all) newNode.querySelector('.reason').classList.add('invisible');
 			break;
 		case 'priority_playlist':
-			if(!!music_data.presenter_user_ids?.includes(reason.user_id)){
+			if(music_data.presenter_user_ids?.includes(reason.user_id)){
 				newNode.querySelector('.reason .text').append(stc.reasonTextSpecialTemplate.cloneNode(true));
 			}else{
 				newNode.querySelector('.reason .text').append(stc.reasonTextPriorityTemplate.cloneNode(true));
 				newNode.querySelector('.reason .priority_list').href = `https://kiite.jp/playlist/${reason.list_id}`;
 			}
 
-			const reason_comment_users = music_data.reasons.filter(v => !!v.playlist_comment);
-			if(!!reason_comment_users.length){
+			const reason_comment_users = music_data.reasons.filter(v => v.playlist_comment);
+			if(reason_comment_users.length){
 				const reason_comment_data = [];
 				for(const priority_list of reason_comment_users){
 					userIcons.add(priority_list.user)
@@ -328,45 +363,45 @@ function createTimetableItem(music_data, rotate_data, comment_data){
 	newNode.querySelector('.artist span').textContent = music_data.artist_name;
 	newNode.querySelector('.source > a').href = `https://kiite.jp/search/song?keyword=${music_data.baseinfo.video_id}`;
 
-	if(!options.comment_fold){
-		newNode.querySelector('.comment_list').classList.remove('folded');
-		newNode.querySelector('.comment_tail').classList.add('invisible');
-	}
-
-	if(options.comment_log && !!comment_data?.length){
+	if(options.comment_log && comment_data?.length){
 		newNode.querySelector('.comment_list').append(timetableCommentCreate(comment_data));
 		newNode.querySelector('.comment_list').classList.remove('empty');
 	}
 
-	newNode.querySelector('.music_info .artist span').onclick = _this => {
-		callApi('https://cafe.kiite.jp/api/artist/id', {artist_id: _this.target.parentNode.dataset.artist_id}).then(res => {
+	newNode.querySelector('.music_info .artist span').onclick = e => {
+		callApi('https://cafe.kiite.jp/api/artist/id', {artist_id: e.target.parentNode.dataset.artist_id}).then(res => {
 			window.open('https://kiite.jp/creator/'+res.creator_id, '_blank');
 		});
 	};
 
-	newNode.querySelector('.comment_tail').onclick = _this => {
-		if((_this.ctrlKey && !_this.metaKey) || (!_this.ctrlKey && _this.metaKey)){
-			const elementFolded = _this.target.closest('.timetable_item').querySelector('.comment_list').classList.contains('folded');
-			if(elementFolded){
-				document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
-					e.classList.remove('folded');
-				});
+	if(options.comment_fold){
+		newNode.querySelector('.comment_tail').onclick = e => {
+			if((e.ctrlKey && !e.metaKey) || (!e.ctrlKey && e.metaKey)){
+				const elementFolded = e.target.closest('.timetable_item').querySelector('.comment_list').classList.contains('folded');
+				if(elementFolded){
+					document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
+						e.classList.remove('folded');
+					});
+				}else{
+					document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
+						e.classList.add('folded');
+					});
+				}
 			}else{
-				document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
-					e.classList.add('folded');
-				});
+				e.target.closest('.timetable_item').querySelector('.comment_list').classList.toggle('folded');
 			}
-		}else{
-			_this.target.closest('.timetable_item').querySelector('.comment_list').classList.toggle('folded');
-		}
-	};
+		};
+	}else{
+		newNode.querySelector('.comment_list').classList.remove('folded');
+		newNode.querySelector('.comment_tail').remove();
+	}
 
-	if(!!music_data.new_fav_user_ids?.length){
+	if(music_data.new_fav_user_ids?.length){
 		newNode.querySelector('.new_fav').classList.remove('invisible');
 		newNode.querySelector('.new_fav > .count').textContent = music_data.new_fav_user_ids.length;
 	}
 	
-	if(!!rotate_data?.length){
+	if(rotate_data?.length){
 		const rotate = newNode.querySelector('.rotate');
 		rotate.classList.remove('invisible');
 		rotate.querySelector('.count').textContent = rotate_data.length;
@@ -405,12 +440,12 @@ function timetableCommentCreate(dataArr){
 function updateTimecounter(timetable){
 	const nowtime = Date.now();
 	timetable.querySelectorAll('.timetable_item').forEach((element, index) => {
-		if(!!index){
+		if(index){
 			element.classList.remove('onair_now');
 		}else{
 			element.classList.add('onair_now')
 		}
-		if(!!element.querySelector('.timestamp')){
+		if(element.querySelector('.timestamp')){
 			element.querySelector('.timestamp').textContent = ((lag) => {
 				if(lag < 60){
 					return ~~(lag) + '秒前';
@@ -440,9 +475,7 @@ async function observeCafe(){
 			const reason_user_id = music_data.reasons[0].user_id;
 			userIcons.save(reason_user_id);
 			userIcons.save(...music_data.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
-			if(stc.commentData[music_data.id] !== undefined){
-				userIcons.save(...stc.commentData[music_data.id].map(e => e.user_id));
-			}
+			if(stc.commentData[music_data.id] !== undefined) userIcons.save(...stc.commentData[music_data.id].map(e => e.user_id));
 		}
 		
 		await userIcons.load();
@@ -459,9 +492,7 @@ async function observeCafe(){
 		stc.endtime = new Date(newItem.start_time).getTime() + newItem.msec_duration;
 		stc.commentData[newItem.id] ??= [];
 		for(const comment_music_id of Object.keys(stc.commentData)){
-			if(comment_music_id < lastId){
-				delete stc.commentData[comment_music_id];
-			}
+			if(comment_music_id < lastId) delete stc.commentData[comment_music_id];
 		}
 		userIcons.save(newItem.reasons[0].user_id);
 		userIcons.save(...newItem.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
@@ -479,12 +510,8 @@ async function observeCafe(){
 	const gesture_rotate_user_ids = [];
 
 	for(const element of document.querySelectorAll('#cafe_space .user')){
-		if(element.classList.contains('new_fav')){
-			new_fav_user_ids.push(element.dataset.user_id);
-		}
-		if(element.classList.contains('gesture_rotate')){
-			gesture_rotate_user_ids.push(element.dataset.user_id);
-		}
+		if(element.classList.contains('new_fav')) new_fav_user_ids.push(element.dataset.user_id);
+		if(element.classList.contains('gesture_rotate')) gesture_rotate_user_ids.push(element.dataset.user_id);
 	}
 
 	if(Number(qsNew_fav.querySelector('.count').textContent) < new_fav_user_ids.length){
@@ -505,7 +532,7 @@ async function observeCafe(){
 		if(stc.obsComment[comment_user_id] === undefined){
 			stc.obsComment[comment_user_id] = comment_text;
 		}else if(stc.obsComment[comment_user_id] !== comment_text){
-			if(comment_text !== ''){
+			if(comment_text){
 				newComments.push({
 					user_id: comment_user_id, 
 					text: comment_text, 
@@ -518,15 +545,14 @@ async function observeCafe(){
 		}
 	}
 
-	if(!!newComments.length){
+	if(newComments.length){
 		await userIcons.load();
 
-		if(notice_flag && !document.hasFocus()){
-			Notification.requestPermission().then(() => {
-				for(const comment of newComments){
-					new Notification(comment.text,{ body : userIcons.get(comment.user_id).nickname });
-				}
-			});
+		if(options.notification_comment){
+			for(const comment of newComments){
+				const commentUser = userIcons.get(comment.user_id);
+				notification.send(comment.text,{ body : commentUser.nickname, icon: commentUser.avatar_url });
+			}
 		}
 
 		stc.commentData[music_id].push(...newComments);
@@ -541,9 +567,7 @@ async function observeCafe(){
 }
 
 function changeColor(color){
-	if(!options.color_threshold){
-		return color;
-	}
+	if(!options.color_threshold) return color;
 
 	color = color.trim();
 

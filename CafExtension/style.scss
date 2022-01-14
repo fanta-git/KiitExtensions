@@ -432,6 +432,7 @@ $commentFade: .2s;
             position: absolute;
             border-radius: .3em;
             border: 1px rgba(0, 0, 0, 0.1) solid;
+            pointer-events: none;
         }
     }
 
