@@ -1,40 +1,40 @@
 body {
-	background-color: gray;
-	color: white;
+    background-color: gray;
+    color: white;
 }
 
 #options_wrapper {
-	width: 95%;
-	margin: 5px auto auto;
-	padding-left: 0;
+    width: 95%;
+    margin: 5px auto auto;
+    padding-left: 0;
 }
 
 .option_item {
-	display: flex;
-	padding: 3px;
-	border-radius: 3px;
+    display: flex;
+    padding: 3px;
+    border-radius: 3px;
 
-	&:hover {
-		background-color: #555;
-	}
+    &:hover {
+        background-color: #555;
+    }
 
-	& > input {
-		display: block;
-		margin-left: auto;
-		margin-top: auto;
-		margin-bottom: auto;
-		&[type=number] {
-			width: 160px;
-		}
-	}
+    & > input {
+        display: block;
+        margin-left: auto;
+        margin-top: auto;
+        margin-bottom: auto;
+        &[type=number] {
+            width: 160px;
+        }
+    }
 }
 
 #option_buttons {
-	margin-top: 10px;
-	display: flex;
-	column-gap: 5px;
+    margin-top: 10px;
+    display: flex;
+    column-gap: 5px;
 }
 
 #reset_btn {
-	margin-left: auto;
+    margin-left: auto;
 }
