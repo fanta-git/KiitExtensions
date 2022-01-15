@@ -384,9 +384,9 @@ function createTimetableItem(musicData, rotateData, commentData){
         newNode.querySelector('.comment_tail').remove();
     }
 
-    if(musicData.newFavUserIds?.length){
+    if(musicData.new_fav_user_ids?.length){
         newNode.querySelector('.new_fav').classList.remove('invisible');
-        newNode.querySelector('.new_fav > .count').textContent = musicData.newFavUserIds.length;
+        newNode.querySelector('.new_fav > .count').textContent = musicData.new_fav_user_ids.length;
     }
     
     if(rotateData?.length){
