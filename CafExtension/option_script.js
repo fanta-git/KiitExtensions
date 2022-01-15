@@ -1,4 +1,4 @@
-const defaultOptions = {
+const options = {
     comment_fold: true, 
     display_all: true,
     comment_log: false, 
@@ -16,10 +16,7 @@ const optionsPromise = new Promise(resolve => {
 
 window.onload = () => {
     optionsPromise.then(res => {
-        const options = {};
-        for(const key of Object.keys(defaultOptions)){
-            options[key] = res[key] ?? defaultOptions[key];
-        }
+        Object.assign(options, res ?? {});
         setValue(options);
     
         document.querySelector('#options_wrapper').onsubmit = event => {

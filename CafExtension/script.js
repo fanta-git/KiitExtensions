@@ -12,42 +12,47 @@ const options = {
     color_threshold: 6, 
 };
 
-window.onload = () => {
-    storageGet('options').then(optRes => {
-        Object.assign(options, optRes ?? {});
-        setMenuDom();
+async function main(){
+    Object.assign(options, await storageGet('options') ?? {});
+    setMenuDom();
 
-        window.addEventListener('focus', _ => notification.close());
+    window.addEventListener('focus', () => notification.close());
 
-        chrome.storage.onChanged.addListener((changes, namespace) => {
-            for(const [key, {oldValue, newValue}] of Object.entries(changes)){
-                console.log('CHANGED', newValue);
-                switch(key){
-                    case 'music_data':
-                        if(newValue) setMusicDetail(newValue);
-                        break;
-                    case 'options':
-                        location.reload();
-                        break;
-                }
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+        for(const [key, {oldValue, newValue}] of Object.entries(changes)){
+            console.log('CHANGED', newValue);
+            switch(key){
+                case 'music_data':
+                    if(newValue) setMusicDetail(newValue);
+                    break;
+                case 'options':
+                    location.reload();
+                    break;
             }
-        });
-
-        intervalCallFunc(options.interval_time, observeCafe);
+        }
     });
-};
+
+    intervalCallFunc(options.interval_time, observeCafe);
+}
 
 async function intervalCallFunc(interval, func){
     while(true){
-        const funcret = func();
+        const res = func();
         await new Promise(r => setTimeout(r, interval));
-        await funcret;
+        await res;
     }
 }
 
 const userIcons = new class{
     #userData = {};
     #pool = [];
+    #emptyData = {
+        avatar_url: "https://kiite.jp/img/icon-user.jpg", 
+        id: null, 
+        nickname: "???", 
+        user_id: 0, 
+        user_name: ""
+    };
 
     save(...user_ids){
         for(const user_id of user_ids){
@@ -56,10 +61,9 @@ const userIcons = new class{
     }
 
     async load(){
-        if(this.#pool.length){
-            const res = await callApi('/api/kiite_users', {user_ids: this.#pool});
-            this.add(...res);
-        }
+        if(!this.#pool.length) return null;
+        const res = await callApi('/api/kiite_users', {user_ids: this.#pool});
+        this.add(...res);
         this.#pool.length = 0;
     }
 
@@ -70,14 +74,7 @@ const userIcons = new class{
     }
 
     get(user_id){
-        const dammy = {
-            avatar_url: "https://kiite.jp/img/icon-user.jpg", 
-            id: null, 
-            nickname: "???", 
-            user_id: 0, 
-            user_name: ""
-        };
-        return this.#userData?.[user_id] ?? dammy;
+        return this.#userData?.[user_id] ?? this.#emptyData;
     }
 }
 
@@ -96,35 +93,29 @@ const notification = new class{
         for(const item of this.#ntcList) item.close();
     }
 
-    set(e){
-        storageGet('ntc_flag').then(res => {
-            this.#flag = res ?? false;
-            e.querySelector('.material-icons').textContent = (this.#flag ? 'notifications_active' : 'notifications_off');
-        });
+    async set(e){
+        this.#flag = await storageGet('ntc_flag') ?? false;
+        e.querySelector('.material-icons').textContent = (this.#flag ? 'notifications_active' : 'notifications_off');
     }
 
-    toggle(e){
-        const ct = e.currentTarget;
-        
-        Notification.requestPermission().then(res => {
-            if(res === 'granted' || this.#flag){
-                this.#flag = !this.#flag;
-                storageSet('ntc_flag', this.#flag);
-                ct.querySelector('.material-icons').textContent = (this.#flag ? 'notifications_active' : 'notifications_off');
-            }
-        });
+    async toggle(e){
+        if(this.#flag || await Notification.requestPermission() === 'granted'){
+            this.#flag = !this.#flag;
+            storageSet('ntc_flag', this.#flag);
+            e.currentTarget.querySelector('.material-icons').textContent = (this.#flag ? 'notifications_active' : 'notifications_off');
+        }
     }
 }
 
 async function callApi(url, queryParam = {}, count = 0){
     const nowtime = Date.now();
-    const queryUrl = Object.keys(queryParam).length ? '?'+new URLSearchParams(queryParam) : '';
-    const stc = (callApi.stc ??= {lastCallApi: 0});
-    const api_min_interval = 1000;
-    const api_max_retry = 3;
+    const queryUrl = (Object.keys(queryParam).length ? `?${new URLSearchParams(queryParam)}` : '');
+    const stc = callApi.staticVariable ??= {lastCallApi: 0};
+    const apiMinInterval = 1000;
+    const apiMaxRetry = 3;
 
-    if(nowtime - stc.lastCallApi < api_min_interval){
-        stc.lastCallApi += api_min_interval;
+    if(nowtime - stc.lastCallApi < apiMinInterval){
+        stc.lastCallApi += apiMinInterval;
         await new Promise(r => setTimeout(r, stc.lastCallApi - nowtime));
     }else{
         stc.lastCallApi = nowtime;
@@ -137,7 +128,7 @@ async function callApi(url, queryParam = {}, count = 0){
         console.log('API', json);
         return json;
     }else{
-        if(api_max_retry <= count && apiRetry){
+        if(apiMaxRetry <= count && apiRetry){
             console.log('Error', {url: url, queryParam: queryParam, res: res});
             throw Error('APIの読み込みに失敗しました');
         }else{
@@ -228,11 +219,10 @@ function setMenuDom(){
 
     const qsCafe = document.querySelector('#cafe');
     const qsaMenuLi = document.querySelectorAll('#cafe_menu > ul > li');
-    const viewclass = Array.from(qsaMenuLi, v => `view_${v.dataset.val}`);
     const qsRdIcon = document.querySelector('#rd_toggle .material-icons');
 
     document.querySelector('#rd_toggle').onclick = () => {
-        qsRdIcon.textContent = (qsRdIcon.textContent === 'info') ? 'people' : 'info';
+        qsRdIcon.textContent = (qsRdIcon.textContent === 'info' ? 'people' : 'info');
         qsCafe.classList.toggle('view_music_data');
     };
 
@@ -244,31 +234,31 @@ function setMenuDom(){
 
     for(const element of qsaMenuLi){
         document.querySelector(`#cafe_menu > ul > li.${element.dataset.val}`).onclick = () => {
-            qsCafe.classList.remove(...viewclass);
+            qsCafe.classList.remove(...Array.from(qsaMenuLi, v => `view_${v.dataset.val}`));
             qsCafe.classList.add(`view_${element.dataset.val}`);
         };
     }
 }
 
-function setMusicDetail(music_info){
-    if(options.notification_music) notification.send(music_info.title, { icon: music_info.thumbnailUrl });
+function setMusicDetail(musicInfo){
+    if(options.notification_music) notification.send(musicInfo.title, {icon: musicInfo.thumbnailUrl});
 
-    document.querySelector('#viewCounter').textContent = parseInt(music_info.viewCounter).toLocaleString();
-    document.querySelector('#mylistCounter').textContent = parseInt(music_info.mylistCounter).toLocaleString();
-    document.querySelector('#commentCounter').textContent = parseInt(music_info.thread.commentCounter).toLocaleString();
+    document.querySelector('#viewCounter').textContent = parseInt(musicInfo.viewCounter).toLocaleString();
+    document.querySelector('#mylistCounter').textContent = parseInt(musicInfo.mylistCounter).toLocaleString();
+    document.querySelector('#commentCounter').textContent = parseInt(musicInfo.thread.commentCounter).toLocaleString();
     document.querySelector('#music_description').innerHTML = (
-        music_info.description
+        musicInfo.description
             .replace(/<a.*?>(.*?)<\/a>/, '$1')
             .replace(/https?:\/\/[\w!?/+\-~=;.,*&@#$%()'[\]]+/g, '<a href="$&" target="_blank">$&</a>')
-            .replace(/(?<![\/\w@＠])(mylist\/|user\/|series\/|sm|nm|so|nc|co)\d+/g, nicoURL)
+            .replace(/(?<![\/\w@＠])(mylist\/|user\/|series\/|sm|nm|so|ar|nc|co)\d+/g, nicoURL)
             .replace(/(?<![\/\w])[@＠](\w+)/g, '<a href="https://twitter.com/$1" target="_blank">$&</a>')
             .replace(/(?<=color:)[^;"]+/g, changeColor)
             .replace(/<font(.*?)>(.*?)<\/font>/g, delFontTag)
     );
 }
 
-function createTimetableItem(music_data, rotate_data, comment_data){
-    const stc = (createTimetableItem.stc ??= {
+function createTimetableItem(musicData, rotateData, commentData){
+    const stc = createTimetableItem.staticVariable ??= {
         reasonTextPriorityTemplate: new Range().createContextualFragment(`<a class="user_name" href="" target="_blank"></a>さんの<a class="priority_list" href="" target="_blank">イチ推しリスト</a>の曲です`),
         reasonTextFavTemplate: new Range().createContextualFragment(`<a class="user_name" href="" target="_blank"></a>さんの<b class="fav">お気に入り</b>の曲です`),
         reasonTextPlaylistTemplate: new Range().createContextualFragment(`<a class="user_name" href="" target="_blank"></a>さんの<b class="playlist">プレイリスト</b>の曲です`),
@@ -307,8 +297,8 @@ function createTimetableItem(music_data, rotate_data, comment_data){
                 </div>
             </div>
         `)
-    });
-    const reason = music_data.reasons[0];
+    };
+    const reason = musicData.reasons[0];
     const newNode = document.createDocumentFragment();
 
     newNode.append(stc.timetableItemTemplate.cloneNode(true));
@@ -323,25 +313,25 @@ function createTimetableItem(music_data, rotate_data, comment_data){
             if(!options.display_all) newNode.querySelector('.reason').classList.add('invisible');
             break;
         case 'priority_playlist':
-            if(music_data.presenter_user_ids?.includes(reason.user_id)){
+            if(musicData.presenter_user_ids?.includes(reason.user_id)){
                 newNode.querySelector('.reason .text').append(stc.reasonTextSpecialTemplate.cloneNode(true));
             }else{
                 newNode.querySelector('.reason .text').append(stc.reasonTextPriorityTemplate.cloneNode(true));
                 newNode.querySelector('.reason .priority_list').href = `https://kiite.jp/playlist/${reason.list_id}`;
             }
 
-            const reason_comment_users = music_data.reasons.filter(v => v.playlist_comment);
-            if(reason_comment_users.length){
-                const reason_comment_data = [];
-                for(const priority_list of reason_comment_users){
-                    userIcons.add(priority_list.user)
-                    reason_comment_data.push({
-                        user_id: priority_list.user_id, 
-                        text: priority_list.playlist_comment, 
+            const reasonCommentUsers = musicData.reasons.filter(v => v.playlist_comment);
+            if(reasonCommentUsers.length){
+                const reasonCommentData = [];
+                for(const priorityList of reasonCommentUsers){
+                    userIcons.add(priorityList.user);
+                    reasonCommentData.push({
+                        user_id: priorityList.user_id, 
+                        text: priorityList.playlist_comment, 
                         type: 'priority'
                     });
                 }
-                newNode.querySelector('.comment_list').append(timetableCommentCreate(reason_comment_data));
+                newNode.querySelector('.comment_list').append(timetableCommentCreate(reasonCommentData));
                 newNode.querySelector('.comment_list').classList.remove('empty');
             }
             break;
@@ -352,23 +342,23 @@ function createTimetableItem(music_data, rotate_data, comment_data){
     newNode.querySelector('.reason .user_name').textContent = userIconData.nickname;
     newNode.querySelector('.reason .user_name').href = `https://kiite.jp/user/${userIconData.user_name}`;
 
-    newNode.querySelector('.timetable_item').dataset.timestamp = new Date(music_data.start_time).getTime();
-    newNode.querySelector('.timetable_item').dataset.id = music_data.id;
-    newNode.querySelector('.thumbnail').style.backgroundImage = `url("${music_data.thumbnail.replace('http://', 'https://')}")`;
+    newNode.querySelector('.timetable_item').dataset.timestamp = new Date(musicData.start_time).getTime();
+    newNode.querySelector('.timetable_item').dataset.id = musicData.id;
+    newNode.querySelector('.thumbnail').style.backgroundImage = `url("${musicData.thumbnail.replace('http://', 'https://')}")`;
     
-    newNode.querySelector('.title').textContent = music_data.title;
-    newNode.querySelector('.artist').dataset.artist_id = music_data.artist_id;
-    newNode.querySelector('.artist span').textContent = music_data.artist_name;
-    newNode.querySelector('.source > a').href = `https://kiite.jp/search/song?keyword=${music_data.baseinfo.video_id}`;
+    newNode.querySelector('.title').textContent = musicData.title;
+    newNode.querySelector('.artist').dataset.artist_id = musicData.artist_id;
+    newNode.querySelector('.artist span').textContent = musicData.artist_name;
+    newNode.querySelector('.source > a').href = `https://kiite.jp/search/song?keyword=${musicData.baseinfo.video_id}`;
 
-    if(options.comment_log && comment_data?.length){
-        newNode.querySelector('.comment_list').append(timetableCommentCreate(comment_data));
+    if(options.comment_log && commentData?.length){
+        newNode.querySelector('.comment_list').append(timetableCommentCreate(commentData));
         newNode.querySelector('.comment_list').classList.remove('empty');
     }
 
     newNode.querySelector('.music_info .artist span').onclick = e => {
-        callApi('https://cafe.kiite.jp/api/artist/id', {artist_id: e.target.parentNode.dataset.artist_id}).then(res => {
-            window.open('https://kiite.jp/creator/'+res.creator_id, '_blank');
+        callApi('https://cafe.kiite.jp/api/artist/id', {artist_id: e.currentTarget.parentNode.dataset.artist_id}).then(res => {
+            window.open(`https://kiite.jp/creator/${res.creator_id}`, '_blank');
         });
     };
 
@@ -394,28 +384,28 @@ function createTimetableItem(music_data, rotate_data, comment_data){
         newNode.querySelector('.comment_tail').remove();
     }
 
-    if(music_data.new_fav_user_ids?.length){
+    if(musicData.newFavUserIds?.length){
         newNode.querySelector('.new_fav').classList.remove('invisible');
-        newNode.querySelector('.new_fav > .count').textContent = music_data.new_fav_user_ids.length;
+        newNode.querySelector('.new_fav > .count').textContent = musicData.newFavUserIds.length;
     }
     
-    if(rotate_data?.length){
+    if(rotateData?.length){
         const rotate = newNode.querySelector('.rotate');
         rotate.classList.remove('invisible');
-        rotate.querySelector('.count').textContent = rotate_data.length;
+        rotate.querySelector('.count').textContent = rotateData.length;
     }
     return newNode;
 }
 
 function timetableCommentCreate(dataArr){
-    const stc = (timetableCommentCreate.stc ??= {
+    const stc = timetableCommentCreate.staticVariable ??= {
         timetableCommentTemplate: new Range().createContextualFragment(`
             <div class="comment">
                 <div class="comment_icon" style=""></div>
                 <div class="comment_text"></div>
             </div>
         `)
-    });
+    };
 
     const commentList = document.createDocumentFragment();
     for(const itemData of dataArr){
@@ -446,40 +436,39 @@ function updateTimecounter(timetable){
         if(element.querySelector('.timestamp')){
             element.querySelector('.timestamp').textContent = ((lag) => {
                 if(lag < 60){
-                    return ~~(lag) + '秒前';
+                    return `${~~(lag)}秒前`;
                 }else if(lag < 3600){
-                    return ~~(lag / 60) + '分前';
+                    return `${~~(lag / 60)}分前`;
                 }else if(lag < 86400){
-                    return ~~(lag / 3600) + '時間前';
+                    return `${~~(lag / 3600)}時間前`;
                 }
-                return ~~(lag / 86400) + '日前';
+                return `${~~(lag / 86400)}日前`;
             })((nowtime - element.dataset.timestamp) / 1000);
         }
     });
 }
 
 async function observeCafe(){
-    const stc = (observeCafe.stc ??= {endtime: null, commentData: {}, obsComment: {}});
+    const stc = observeCafe.staticVariable ??= {endtime: null, commentData: {}, obsComment: {}};
     if(stc.endtime === null){
         const timetableData = await callApi('/api/cafe/timetable', {with_comment: 1, limit: options.timetable_max});
-        const rotate_history = await callApi('/api/cafe/rotate_users', {ids: timetableData.map(e => e.id)});
+        const rotateHistory = await callApi('/api/cafe/rotate_users', {ids: timetableData.map(e => e.id)});
         stc.commentData = await storageGet('commentData') ?? {};
         stc.commentData[timetableData[0].id] ??= [];
 
         const timetable = document.createDocumentFragment();
         stc.endtime = new Date(timetableData[0].start_time).getTime() + timetableData[0].msec_duration;
         
-        for(const music_data of timetableData){
-            const reason_user_id = music_data.reasons[0].user_id;
-            userIcons.save(reason_user_id);
-            userIcons.save(...music_data.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
-            if(stc.commentData[music_data.id] !== undefined) userIcons.save(...stc.commentData[music_data.id].map(e => e.user_id));
+        for(const musicData of timetableData){
+            userIcons.save(musicData.reasons[0].user_id);
+            userIcons.save(...musicData.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
+            if(stc.commentData[musicData.id] !== undefined) userIcons.save(...stc.commentData[musicData.id].map(e => e.user_id));
         }
         
         await userIcons.load();
         
-        for(const music_data of timetableData){
-            timetable.append(createTimetableItem(music_data, rotate_history[music_data.id], stc.commentData[music_data.id]));
+        for(const musicData of timetableData){
+            timetable.append(createTimetableItem(musicData, rotateHistory[musicData.id], stc.commentData[musicData.id]));
         }
         updateTimecounter(timetable);
         
@@ -489,8 +478,8 @@ async function observeCafe(){
         const lastId = document.querySelector(`#timetable_list .timetable_item:nth-child(${options.timetable_max})`)?.dataset.id;
         stc.endtime = new Date(newItem.start_time).getTime() + newItem.msec_duration;
         stc.commentData[newItem.id] ??= [];
-        for(const comment_music_id of Object.keys(stc.commentData)){
-            if(comment_music_id < lastId) delete stc.commentData[comment_music_id];
+        for(const commentMusicId of Object.keys(stc.commentData)){
+            if(commentMusicId < lastId) delete stc.commentData[commentMusicId];
         }
         userIcons.save(newItem.reasons[0].user_id);
         userIcons.save(...newItem.reasons.filter(e => e?.playlist_comment != null).map(e => e.user_id));
@@ -503,43 +492,42 @@ async function observeCafe(){
     const qsTimetableFirst = document.querySelector('#timetable_list .timetable_item:first-child');
     if(qsTimetableFirst === null) return null;
     const qsRotate = qsTimetableFirst.querySelector('.rotate');
-    const qsNew_fav = qsTimetableFirst.querySelector('.new_fav');
-    const new_fav_user_ids = [];
-    const gesture_rotate_user_ids = [];
+    const qsNewFav = qsTimetableFirst.querySelector('.new_fav');
+    const newFavUserIds = [];
+    const gestureRotateUserIds = [];
 
     for(const element of document.querySelectorAll('#cafe_space .user')){
-        if(element.classList.contains('new_fav')) new_fav_user_ids.push(element.dataset.user_id);
-        if(element.classList.contains('gesture_rotate')) gesture_rotate_user_ids.push(element.dataset.user_id);
+        if(element.classList.contains('new_fav')) newFavUserIds.push(element.dataset.user_id);
+        if(element.classList.contains('gesture_rotate')) gestureRotateUserIds.push(element.dataset.user_id);
     }
 
-    if(Number(qsNew_fav.querySelector('.count').textContent) < new_fav_user_ids.length){
-        qsNew_fav.classList.remove('invisible');
-        qsNew_fav.querySelector('.count').textContent = new_fav_user_ids.length;
+    if(Number(qsNewFav.querySelector('.count').textContent) < newFavUserIds.length){
+        qsNewFav.classList.remove('invisible');
+        qsNewFav.querySelector('.count').textContent = newFavUserIds.length;
     }
 
-    if(Number(qsRotate.querySelector('.count').textContent) < gesture_rotate_user_ids.length){
+    if(Number(qsRotate.querySelector('.count').textContent) < gestureRotateUserIds.length){
         qsRotate.classList.remove('invisible');
-        qsRotate.querySelector('.count').textContent = gesture_rotate_user_ids.length;
+        qsRotate.querySelector('.count').textContent = gestureRotateUserIds.length;
     }
 
     const newComments = [];
-    const music_id = qsTimetableFirst.dataset.id;
     for(const element of document.querySelectorAll('#cafe_space .user')){
-        const comment_user_id = element.dataset.user_id;
-        const comment_text = element.querySelector('.comment').textContent;
-        if(stc.obsComment[comment_user_id] === undefined){
-            stc.obsComment[comment_user_id] = comment_text;
-        }else if(stc.obsComment[comment_user_id] !== comment_text){
-            if(comment_text){
+        const commentUserId = element.dataset.user_id;
+        const commentText = element.querySelector('.comment').textContent;
+        if(stc.obsComment[commentUserId] === undefined){
+            stc.obsComment[commentUserId] = commentText;
+        }else if(stc.obsComment[commentUserId] !== commentText){
+            if(commentText){
                 newComments.push({
-                    user_id: comment_user_id, 
-                    text: comment_text, 
+                    user_id: commentUserId, 
+                    text: commentText, 
                     type: 'user'
                 });
     
-                userIcons.save(comment_user_id);
+                userIcons.save(commentUserId);
             }
-            stc.obsComment[comment_user_id] = comment_text;
+            stc.obsComment[commentUserId] = commentText;
         }
     }
 
@@ -549,11 +537,11 @@ async function observeCafe(){
         if(options.notification_comment){
             for(const comment of newComments){
                 const commentUser = userIcons.get(comment.user_id);
-                notification.send(comment.text,{ body : commentUser.nickname, icon: commentUser.avatar_url });
+                notification.send(comment.text,{body : commentUser.nickname, icon: commentUser.avatar_url});
             }
         }
 
-        stc.commentData[music_id].push(...newComments);
+        stc.commentData[qsTimetableFirst.dataset.id].push(...newComments);
 
         storageSet('commentData', stc.commentData);
         
@@ -662,23 +650,28 @@ function nicoURL(match, type){
     switch(type){
         case 'mylist/':
         case 'user/':
-            url = 'https://www.nicovideo.jp/'+match;
+            url = `https://www.nicovideo.jp/${match}`;
             break;
         case 'series/':
-            url = 'https://www.nicovideo.jp/' + match;
+            url = `https://www.nicovideo.jp/${match}`;
             break;
         case 'sm':
         case 'nm':
         case 'so':
-            url = 'https://www.nicovideo.jp/watch/'+match;
+            url = `https://www.nicovideo.jp/watch/${match}`;
+            break;
+        case 'ar':
+            url = `https://ch.nicovideo.jp/article/${match}`;
             break;
         case 'nc':
-            url = 'https://commons.nicovideo.jp/material/'+match;
+            url = `https://commons.nicovideo.jp/material/${match}`;
             break;
         case 'co':
-            url = 'https://com.nicovideo.jp/community/'+match;
+            url = `https://com.nicovideo.jp/community/${match}`;
             break;
     }
 
     return `<a href="${url}" target="_blank">${match}</a>`
 }
+
+window.onload = main;
