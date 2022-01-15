@@ -1,7 +1,7 @@
-const options = {
-    comment_fold: true, 
+const defaultOptions = {
+    comment_fold: false, 
     display_all: true,
-    comment_log: false, 
+    comment_log: true, 
     notification_music: true, 
     notification_comment: true, 
     timetable_max: 100,
@@ -14,24 +14,22 @@ const optionsPromise = new Promise(resolve => {
     chrome.storage.local.get({options: {}}, r => resolve(r.options));
 });
 
-window.onload = () => {
-    optionsPromise.then(res => {
-        Object.assign(options, res ?? {});
-        setValue(options);
-    
-        document.querySelector('#options_wrapper').onsubmit = event => {
-            event.preventDefault();
-            saveValue().then(window.close);
-        };
-    
-        document.querySelector('#reset_btn').onclick = () => {
-            setValue(defaultOptions);
-        };
-    
-        document.querySelector('#clear_btn').onclick = () => {
-            chrome.storage.local.clear().then(window.close);
-        };
-    });
+async function main(){
+    const options = {...defaultOptions, ...await optionsPromise};
+    setValue(options);
+
+    document.querySelector('#options_wrapper').onsubmit = event => {
+        event.preventDefault();
+        saveValue().then(window.close);
+    };
+
+    document.querySelector('#reset_btn').onclick = () => {
+        setValue(defaultOptions);
+    };
+
+    document.querySelector('#clear_btn').onclick = () => {
+        chrome.storage.local.clear().then(window.close);
+    };
 }
 
 function setValue(setOptions){
@@ -63,3 +61,5 @@ function saveValue(){
         chrome.storage.local.set({options: saveOptions}, resolve);
     })
 }
+
+window.onload = main;
