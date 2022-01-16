@@ -49,7 +49,7 @@ const userIcons = new class{
     #emptyData = {
         avatar_url: "https://kiite.jp/img/icon-user.jpg", 
         id: null, 
-        nickname: "???", 
+        nickname: "CafeUser", 
         user_id: 0, 
         user_name: ""
     };
@@ -75,6 +75,7 @@ const userIcons = new class{
 
     get(user_id){
         return this.#userData?.[user_id] ?? this.#emptyData;
+        return this.#emptyData;//撮影用
     }
 }
 
@@ -99,10 +100,11 @@ const notification = new class{
     }
 
     async toggle(e){
+        const ct = e.currentTarget;
         if(this.#flag || await Notification.requestPermission() === 'granted'){
             this.#flag = !this.#flag;
             storageSet('ntc_flag', this.#flag);
-            e.currentTarget.querySelector('.material-icons').textContent = (this.#flag ? 'notifications_active' : 'notifications_off');
+            ct.querySelector('.material-icons').textContent = (this.#flag ? 'notifications_active' : 'notifications_off');
         }
     }
 }
