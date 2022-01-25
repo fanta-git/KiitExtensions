@@ -250,7 +250,7 @@ function setMusicDetail(musicInfo){
     document.querySelector('#commentCounter').textContent = parseInt(musicInfo.thread.commentCounter).toLocaleString();
     document.querySelector('#music_description').innerHTML = (
         musicInfo.description
-            .replace(/<a.*?>(.*?)<\/a>/, '$1')
+            .replace(/<a.*?>(.*?)<\/a>/g, '$1')
             .replace(/https?:\/\/[\w!?/+\-~=;.,*&@#$%()'[\]]+/g, '<a href="$&" target="_blank">$&</a>')
             .replace(/(?<![\/\w@＠])(mylist\/|user\/|series\/|sm|nm|so|ar|nc|co)\d+/g, nicoURL)
             .replace(/(?<![\/\w])[@＠](\w+)/g, '<a href="https://twitter.com/$1" target="_blank">$&</a>')
@@ -476,7 +476,7 @@ async function observeCafe(){
         
         document.querySelector('#timetable_list').replaceChildren(timetable);
     }else if(stc.endtime + options.wait_time < Date.now()){
-        const newItem = await callApi('/api/cafe/now_playing');
+        const newItem = (await callApi('/api/cafe/timetable', {with_comment: 1, limit: 1}))[0];
         const lastId = document.querySelector(`#timetable_list .timetable_item:nth-child(${options.timetable_max})`)?.dataset.id;
         stc.endtime = new Date(newItem.start_time).getTime() + newItem.msec_duration;
         stc.commentData[newItem.id] ??= [];
