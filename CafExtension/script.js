@@ -13,10 +13,15 @@ const options = {
 };
 
 async function main(){
-    Object.assign(options, await storageGet('options') ?? {});
+    Object.assign(options, await storage.get('options') ?? {});
     setMenuDom();
 
     window.addEventListener('focus', () => notification.close());
+
+    window.addEventListener('beforeunload', () => {
+        storage.save();
+        notification.close();
+    });
 
     chrome.storage.onChanged.addListener((changes, namespace) => {
         for(const [key, {oldValue, newValue}] of Object.entries(changes)){
@@ -95,7 +100,7 @@ const notification = new class{
     }
 
     async set(e){
-        this.#flag = await storageGet('ntc_flag') ?? false;
+        this.#flag = await storage.get('ntc_flag') ?? false;
         e.querySelector('.material-icons').textContent = (this.#flag ? 'notifications_active' : 'notifications_off');
     }
 
@@ -103,9 +108,35 @@ const notification = new class{
         const ct = e.currentTarget;
         if(this.#flag || await Notification.requestPermission() === 'granted'){
             this.#flag = !this.#flag;
-            storageSet('ntc_flag', this.#flag);
+            storage.update('ntc_flag', this.#flag);
             ct.querySelector('.material-icons').textContent = (this.#flag ? 'notifications_active' : 'notifications_off');
         }
+    }
+}
+
+const storage = new class{
+    #pool = {};
+    get(key){
+        return new Promise(resolve => (
+            chrome.storage.local.get(key, r => {
+                console.log('GET', r);
+                resolve(r[key]);
+            })
+        ));
+    }
+    
+    update(key, value){
+        this.#pool[key] = value;
+    }
+
+    save(){
+        return new Promise(resolve => (
+            chrome.storage.local.set(this.#pool, r => {
+                console.log('SET', this.#pool);
+                this.#pool = {};
+                resolve(r);
+            })
+        ));
     }
 }
 
@@ -138,24 +169,6 @@ async function callApi(url, queryParam = {}, count = 0){
             return await callApi(url, queryParam, count++);
         }
     }
-}
-
-function storageGet(key){
-    return new Promise(resolve => (
-        chrome.storage.local.get(key, r => {
-            console.log('GET', r);
-            resolve(r[key]);
-        })
-    ));
-}
-
-function storageSet(key, value){
-    return new Promise(resolve => (
-        chrome.storage.local.set({[key]: value}, r => {
-            console.log('SET', {[key]: value});
-            resolve(r);
-        })
-    ));
 }
 
 function setMenuDom(){
@@ -455,7 +468,7 @@ async function observeCafe(){
     if(stc.endtime === null){
         const timetableData = await callApi('/api/cafe/timetable', {with_comment: 1, limit: options.timetable_max});
         const rotateHistory = await callApi('/api/cafe/rotate_users', {ids: timetableData.map(e => e.id)});
-        stc.commentData = await storageGet('commentData') ?? {};
+        stc.commentData = await storage.get('commentData') ?? {};
         stc.commentData[timetableData[0].id] ??= [];
 
         const timetable = document.createDocumentFragment();
@@ -545,7 +558,7 @@ async function observeCafe(){
 
         stc.commentData[qsTimetableFirst.dataset.id].push(...newComments);
 
-        storageSet('commentData', stc.commentData);
+        storage.update('commentData', stc.commentData);
         
         if(options.comment_log){
             qsTimetableFirst.querySelector('.comment_list').append(timetableCommentCreate(newComments));
