@@ -263,12 +263,13 @@ function setMusicDetail(musicInfo){
     document.querySelector('#commentCounter').textContent = parseInt(musicInfo.thread.commentCounter).toLocaleString();
     document.querySelector('#music_description').innerHTML = (
         musicInfo.description
-            .replace(/<a.*?>(.*?)<\/a>/g, '$1')
+            .replace(/<\/?a.*?>/g, '')
             .replace(/https?:\/\/[\w!?/+\-~=;.,*&@#$%()'[\]]+/g, '<a href="$&" target="_blank">$&</a>')
             .replace(/(?<![\/\w@＠])(mylist\/|user\/|series\/|sm|nm|so|ar|nc|co)\d+/g, nicoURL)
             .replace(/(?<![\/\w])[@＠](\w+)/g, '<a href="https://twitter.com/$1" target="_blank">$&</a>')
             .replace(/(?<=color:)[^;"]+/g, changeColor)
-            .replace(/<font(.*?)>(.*?)<\/font>/g, delFontTag)
+            .replace(/<font(.*?)>/g, fontToSpan)
+            .replace(/<\/font>/g, '</span>')
     );
 }
 
@@ -621,15 +622,15 @@ function changeColor(color){
     return `rgb(${r}, ${g}, ${b})`;
 }
 
-function delFontTag(match, attributes, text){
-    let style = '';
-    if(attributes.search(/[^ ]/) !== -1){
-        style = ' style="';
+function fontToSpan(match, attributes){
+    let tag = '<span';
+    if(attributes.trim().length){
+        tag += ' style="';
         for(const attr of attributes.trim().split(/(?<=") +/)){
             const [propaty, value] = attr.replace(/"/g, '').split('=');
             switch(propaty){
                 case 'color':
-                    style += `color: ${changeColor(value)};`;
+                    tag += `color: ${changeColor(value)};`;
                     break;
                 case 'size':
                     let sizeVal = 0;
@@ -646,17 +647,17 @@ function delFontTag(match, attributes, text){
                     }else if(7 < sizeVal){
                         sizeVal = 7;
                     }
-                    style += `font-size: ${sizeToPx[sizeVal - 1]}px;`;
+                    tag += `font-size: ${sizeToPx[sizeVal - 1]}px;`;
                     break;
                 case 'face':
                     const fonts = value.split(/ *, */);
-                    style += `font-family ${fonts.map(v => "'"+v+"'").join(', ')};`
+                    tag += `font-family ${fonts.map(v => "'"+v+"'").join(', ')};`
                     break;
             }
         }
-        style += '"';
+        tag += '">';
     }
-    return `<span${style}>${text}</span>`;
+    return tag;
 }
 
 function nicoURL(match, type){
