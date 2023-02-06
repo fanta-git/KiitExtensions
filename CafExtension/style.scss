@@ -77,10 +77,10 @@ $commentFade: .2s;
     height: calc(100% - 40px);
     padding: 10px;
     background: rgba(0,0,0,0.5);
-	overflow-y: scroll; 
+	overflow-y: scroll;
     word-wrap: break-word;
     letter-spacing: 0px;
-    
+
     a {
         color: #b6b6b6;
     }
@@ -103,7 +103,7 @@ $commentFade: .2s;
     border-left: 4px #ffef00 solid;
 }
 
-#timetable { 
+#timetable {
     position: relative;
     display: none;
     width: 100%;
@@ -159,7 +159,7 @@ $commentFade: .2s;
 }
 
 #timetable_list {
-    display: flex;   
+    display: flex;
     padding: 10px 40px 10px;
     flex-direction: column;
     row-gap: 8px;
@@ -173,10 +173,10 @@ $commentFade: .2s;
         grid-template-columns: 60px 1fr;
         grid-template-rows: 60px auto 1fr auto;
         column-gap: 5px;
-        grid-template-areas: 
-            "thum info" 
-            ".    info" 
-            ".    comm" 
+        grid-template-areas:
+            "thum info"
+            ".    info"
+            ".    comm"
             ".    tail";
         position: relative;
     }
@@ -203,7 +203,7 @@ $commentFade: .2s;
         grid-template-columns: 58px 5fr 1fr 1fr 20px;
         grid-template-rows: 18px 18px 18px;
         row-gap: 3px;
-        grid-template-areas: 
+        grid-template-areas:
             "time reas reas reas sour"
             "titl titl titl titl sour"
             "arti arti rota fave sour";
@@ -250,41 +250,41 @@ $commentFade: .2s;
             background-position: center;
             border-radius: 50%;
         }
-        
+
         .text {
             display: inline-block;
             font-size: 12px;
         }
-        
+
         .text a {
             text-decoration: underline;
             font-weight: bold;
         }
-        
+
         .text a:hover {
             text-decoration: none;
         }
-        
+
         .text b {
             font-weight: bold;
         }
-        
+
         .user_name {
             color: #ffef00;
         }
-        
+
         .special_list {
             color: cyan;
         }
-        
+
         .priority_list {
             color: cyan;
         }
-        
+
         .fav {
             color: #ff33aa;
         }
-        
+
         .playlist {
             color: #10d300;
         }
@@ -373,7 +373,7 @@ $commentFade: .2s;
     .source .material-icons:hover {
         color: #FFF;
     }
-     
+
     .comment_list {
         display: flex;
         flex-direction: column;
@@ -468,7 +468,7 @@ $commentFade: .2s;
         .comment {
             transition: $commentResize $commentFade;
         }
-        
+
         &, .comment *, .comment_text span {
             transition: $commentResize 0s;
         }
@@ -482,7 +482,7 @@ $commentFade: .2s;
             transition: $commentFade 0s;
             opacity: 0;
         }
-        
+
         &, .comment * , .comment_text span {
             transition: $commentResize $commentFade ;
         }
@@ -493,7 +493,7 @@ $commentFade: .2s;
             border-width: 0;
             row-gap: 0;
         }
-        
+
         .comment_icon {
             height: 0;
         }
@@ -519,7 +519,7 @@ $commentFade: .2s;
         grid-row: 4 / 5;
         grid-column: 2 / 3;
     }
-    
+
     #music_data .inner {
         display: grid;
         grid-template-columns: 120px;
