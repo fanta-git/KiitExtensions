@@ -5,9 +5,9 @@
     "version": "1.1.0",
     "manifest_version": 3,
     "icons":{
-        "128": "icon/128.png", 
-        "48": "icon/48.png", 
-        "32": "icon/32.png", 
+        "128": "icon/128.png",
+        "48": "icon/48.png",
+        "32": "icon/32.png",
         "16": "icon/16.png"
     },
     "permissions": [
@@ -16,17 +16,17 @@
     "content_scripts": [
         {
             "matches": ["https://cafe.kiite.jp/pc"],
-            "css": ["CafExtension/style.css"],
-            "js" : ["CafExtension/script.js"]
+            "css": ["css/style.css"],
+            "js" : ["js/script.js"]
         },
         {
             "matches": ["https://embed.nicovideo.jp/watch/*"],
-            "js" : ["CafExtension/iframe.js"],
+            "js" : ["js/iframe.js"],
             "all_frames": true
         }
     ],
     "options_ui": {
-        "page": "CafExtension/options.html", 
+        "page": "js/options.html",
         "browser_style": false
     }
 }

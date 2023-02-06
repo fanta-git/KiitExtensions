@@ -1,5 +1,5 @@
 // @ts-nocheck
-'use strict';
+import './scss/style.scss'
 
 const options = {
     comment_fold: false,

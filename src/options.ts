@@ -1,3 +1,5 @@
+import './scss/options_style.scss'
+
 type options = {
     comment_fold: boolean,
     display_all: boolean,
