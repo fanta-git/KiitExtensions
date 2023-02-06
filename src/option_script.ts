@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 const defaultOptions = {
     comment_fold: false,
     display_all: true,
@@ -14,7 +16,7 @@ const optionsPromise = new Promise(resolve => {
     chrome.storage.local.get({ options: {} }, r => resolve(r.options));
 });
 
-async function main() {
+async function main__() {
     const options = { ...defaultOptions, ...await optionsPromise };
     setValue(options);
 
@@ -62,4 +64,4 @@ function saveValue() {
     })
 }
 
-window.onload = main;
+window.onload = main__;

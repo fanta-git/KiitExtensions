@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use strict';
 
 const options = {
@@ -12,7 +13,7 @@ const options = {
     color_threshold: 6,
 };
 
-async function main() {
+async function main__() {
     Object.assign(options, await storage.get('options') ?? {});
     setMenuDom();
 
@@ -690,4 +691,4 @@ function nicoURL(match, type) {
     return `<a href="${url}" target="_blank">${match}</a>`
 }
 
-window.onload = main;
+window.onload = main__;
