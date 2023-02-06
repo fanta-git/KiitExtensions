@@ -1,6 +1,16 @@
-// @ts-nocheck
+type options = {
+    comment_fold: boolean,
+    display_all: boolean,
+    comment_log: boolean,
+    notification_music: boolean,
+    notification_comment: boolean,
+    timetable_max: number,
+    wait_time: number,
+    interval_time: number,
+    color_threshold: number
+};
 
-const defaultOptions = {
+const defaultOptions: options = {
     comment_fold: false,
     display_all: true,
     comment_log: true,
@@ -12,56 +22,67 @@ const defaultOptions = {
     color_threshold: 6,
 };
 
-const optionsPromise = new Promise(resolve => {
+const optionsPromise = new Promise<options>(resolve => {
     chrome.storage.local.get({ options: {} }, r => resolve(r.options));
 });
 
-async function main__() {
+async function main() {
     const options = { ...defaultOptions, ...await optionsPromise };
     setValue(options);
 
-    document.querySelector('#options_wrapper').onsubmit = event => {
+    document.querySelector('#options_wrapper')?.addEventListener('submit', event => {
         event.preventDefault();
         saveValue().then(window.close);
-    };
+    });
 
-    document.querySelector('#reset_btn').onclick = () => {
+    document.querySelector('#reset_btn')?.addEventListener('click', () => {
         setValue(defaultOptions);
-    };
+    });
 
-    document.querySelector('#clear_btn').onclick = () => {
+    document.querySelector('#clear_btn')?.addEventListener('click', () => {
         chrome.storage.local.clear().then(window.close);
-    };
+    });
 }
 
-function setValue(setOptions) {
-    for (const optionDom of document.options_form.elements) {
-        switch (optionDom.type) {
-            case "checkbox":
-                optionDom.checked = setOptions[optionDom.name];
-                break;
-            case "number":
-                optionDom.value = setOptions[optionDom.name];
-                break;
+function iskey<T extends Record<string | number | symbol, any>>(obj: T, key: string | number | symbol): key is keyof T {
+    return obj.hasOwnProperty(key);
+}
+
+function setValue(setOptions: options) {
+    for (const optionDom of document.querySelectorAll<HTMLInputElement>('.option_item > input')) {
+        if (!iskey(setOptions, optionDom.name)) continue;
+
+        if (optionDom.type === 'checkbox') {
+            optionDom.checked = Boolean(setOptions[optionDom.name]);
+        }
+
+        if (optionDom.type === 'number'){
+            optionDom.value = String(setOptions[optionDom.name]);
         }
     }
 }
 
 function saveValue() {
-    const saveOptions = {};
-    for (const optionDom of document.options_form.elements) {
-        switch (optionDom.type) {
-            case "checkbox":
-                saveOptions[optionDom.name] = optionDom.checked;
-                break;
-            case "number":
-                saveOptions[optionDom.name] = Number(optionDom.value);
-                break;
+    // TODO: もっと良い感じの書き方探す
+    const saveOptions: Record<string, boolean | number> = { ...defaultOptions };
+    for (const optionDom of document.querySelectorAll<HTMLInputElement>('.option_item > input')) {
+        if (!iskey(saveOptions, optionDom.name)) continue;
+
+        if (optionDom.type === 'checkbox') {
+            saveOptions[optionDom.name] = optionDom.checked;
+        }
+
+        if (optionDom.type === 'number') {
+            saveOptions[optionDom.name] = Number(optionDom.value);
         }
     }
-    return new Promise(resolve => {
+
+    return new Promise<void>(resolve => {
         chrome.storage.local.set({ options: saveOptions }, resolve);
     })
 }
 
-window.onload = main__;
+window.onload = main;
+
+// vscのバグ回避のため
+export {};

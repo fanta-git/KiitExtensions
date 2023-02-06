@@ -13,7 +13,7 @@ const options = {
     color_threshold: 6,
 };
 
-async function main__() {
+async function main() {
     Object.assign(options, await storage.get('options') ?? {});
     setMenuDom();
 
@@ -691,4 +691,7 @@ function nicoURL(match, type) {
     return `<a href="${url}" target="_blank">${match}</a>`
 }
 
-window.onload = main__;
+window.onload = main;
+
+// vscのバグ回避のため
+export {};
