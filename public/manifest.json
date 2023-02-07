@@ -16,8 +16,8 @@
     "content_scripts": [
         {
             "matches": ["https://cafe.kiite.jp/pc"],
-            "css": ["css/style.css"],
-            "js" : ["js/script.js"]
+            "css": ["css/main.css"],
+            "js" : ["js/main.js"]
         },
         {
             "matches": ["https://embed.nicovideo.jp/watch/*"],
@@ -26,7 +26,7 @@
         }
     ],
     "options_ui": {
-        "page": "js/options.html",
+        "page": "html/options.html",
         "browser_style": false
     }
 }

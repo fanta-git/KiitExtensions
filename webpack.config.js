@@ -5,7 +5,7 @@ const CopyPlugin = require("copy-webpack-plugin");
 module.exports = {
     mode: process.env.NODE_ENV || "development",
     entry: {
-        script: path.join(__dirname, "src/script.ts"),
+        main: path.join(__dirname, "src/main.ts"),
         iframe: path.join(__dirname, "src/iframe.ts"),
         options: path.join(__dirname, "src/options.ts"),
     },
