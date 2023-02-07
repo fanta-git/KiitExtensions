@@ -1,8 +1,6 @@
 const path = require("path");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyPlugin = require("copy-webpack-plugin");
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
     mode: process.env.NODE_ENV || "development",
@@ -12,8 +10,9 @@ module.exports = {
         options: path.join(__dirname, "src/options.ts"),
     },
     output: {
-        path: path.join(__dirname, "dist/js"),
-        filename: "[name].js",
+        path: path.join(__dirname, "dist"),
+        filename: "js/[name].js",
+        clean: true
     },
     module: {
         rules: [
@@ -33,26 +32,17 @@ module.exports = {
     },
     plugins: [
         new MiniCssExtractPlugin({
-            filename: '../css/[name].css'
-        }),
-        new HtmlWebpackPlugin({
-            template: './src/html/options.html',
-            filename: '[name].html',
-            chunks: ['options']
+            filename: './css/[name].css'
         }),
         new CopyPlugin({
             patterns: [
                 {
                     from: ".",
-                    to: "../",
+                    to: ".",
                     context: "public"
                 }
             ]
         }),
-        // new CleanWebpackPlugin({
-        //     verbose : true ,
-        //     cleanOnceBeforeBuildPatterns: ['.']
-        // }),
     ],
     devtool: 'cheap-module-source-map',
     cache: true,

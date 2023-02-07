@@ -1,4 +1,4 @@
-import './scss/options_style.scss'
+import './scss/options.scss'
 
 type options = {
     comment_fold: boolean,
