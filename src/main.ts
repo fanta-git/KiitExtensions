@@ -4,6 +4,7 @@ import type { ReasonPriorityWithComment, ReturnCafeSong, User } from './util/api
 import fetchCafeAPI from './util/fetchCafeAPI';
 import chromeStorage from './util/chromeStorage';
 import optimizeDescription from './util/optimizeDescription';
+import * as templates from './util/templates';
 
 type CommentDataType = {
     user_id: number,
@@ -95,8 +96,8 @@ const notification = new class {
     }
 
     async toggle(e: Event) {
-        const ct = e.currentTarget as Element;
-        if (ct === null) return;
+        const ct = e.currentTarget;
+        if (!(ct instanceof Element) || ct === null) return;
         const nowFlag = await chromeStorage.get('flag');
         if (nowFlag || await Notification.requestPermission() === 'granted') {
             chromeStorage.set('flag', !nowFlag);
@@ -106,65 +107,11 @@ const notification = new class {
 }
 
 function setMenuDom() {
-    document.querySelector('#now_playing_info .source')!.insertAdjacentHTML('afterend', `
-        <div class="rd_toggle" id="rd_toggle">
-            <i class="material-icons">info</i>
-        </div>
-        <div class="ntc_toggle" id="ntc_toggle">
-            <i class="material-icons"></i>
-        </div>
-    `);
-
+    document.querySelector('#now_playing_info .source')!.after(templates.extensionMenu);
     notification.set(document.querySelector('#ntc_toggle')!);
-
-    document.querySelector('#reasons')!.insertAdjacentHTML('afterend', `
-        <div id="music_data">
-            <div class="inner">
-                <div id="music_detail">
-                    <div class="music_detail_items">
-                        <i class="material-icons">play_arrow</i>
-                        <div id="viewCounter">39,392</div>
-                    </div>
-                    <div class="music_detail_items">
-                        <i class="material-icons">textsms</i>
-                        <div id="commentCounter">410</div>
-                    </div>
-                    <div class="music_detail_items">
-                        <i class="material-icons">folder</i>
-                        <div id="mylistCounter">804</div>
-                    </div>
-                </div>
-                <div id="music_description">
-                    動画を再生すると説明文や再生数などがここに表示されます<br>
-                    再生しても表示されない時は再読み込みしてください
-                </div>
-            </div>
-        </div>
-    `);
-
-    document.querySelector('#cafe_menu > ul')!.insertAdjacentHTML('beforeend', `
-        <li data-val="timetable" class="timetable">選曲履歴</li>
-    `);
-
-    document.querySelector('#cafe')!.insertAdjacentHTML('beforeend', `
-        <div id="timetable">
-            <div class="logo_mini">
-                <div class="logo_inner">
-                    <img src="/assets/logo.png">
-                    <div class="logo_cafe">Cafe</div>
-                </div>
-            </div>
-            <div class="inner">
-                <h2>選曲履歴100</h2>
-                <div class="exp">
-                    Kiite Cafe にログインしているユーザの、プレイリストやお気に入り、イチ推しリストから自動的に選曲されます<br>
-                    コメント履歴はあなたがKiite Cafeにログインしている間しか記録されません
-                </div>
-                <div id="error_message"></div>
-                <div id="timetable_list"></div>
-            </div>
-        </div>
-    `);
+    document.querySelector('#reasons')!.after(templates.musicData);
+    document.querySelector('#cafe_menu > ul')!.appendChild(templates.timetableLabel);
+    document.querySelector('#cafe')!.appendChild(templates.timetable);
 
     const qsCafe = document.querySelector('#cafe')!;
     const qsaMenuLi = document.querySelectorAll<HTMLLIElement>('#cafe_menu > ul > li');
@@ -199,65 +146,25 @@ function setMusicDetail(musicInfo: any) {
 }
 
 function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], commentData: CommentDataType[]) {
-    const stc = (createTimetableItem as any).staticVariable ??= {
-        reasonTextPriorityTemplate: new Range().createContextualFragment(`<a class="user_name" href="" target="_blank"></a>さんの<a class="priority_list" href="" target="_blank">イチ推しリスト</a>の曲です`),
-        reasonTextFavTemplate: new Range().createContextualFragment(`<a class="user_name" href="" target="_blank"></a>さんの<b class="fav">お気に入り</b>の曲です`),
-        reasonTextPlaylistTemplate: new Range().createContextualFragment(`<a class="user_name" href="" target="_blank"></a>さんの<b class="playlist">プレイリスト</b>の曲です`),
-        reasonTextSpecialTemplate: new Range().createContextualFragment(`<a class="user_name" href="" target="_blank"></a>さんの<b class="special_list">特別メニュー</b>の曲です`),
-        timetableItemTemplate: new Range().createContextualFragment(`
-            <div class="timetable_item" data-timestamp="">
-                <div class="bg_black"></div>
-                <div class="thumbnail" style=""></div>
-                <div class="music_info">
-                    <div class="onair">ON AIR</div>
-                    <div class="timestamp">**分前</div>
-                    <div class="reason">
-                        <div class="icon" style=""></div>
-                        <div class="text"></div>
-                    </div>
-                    <div class="title"></div>
-                    <div class="artist"><span></span></div>
-                    <div class="rotate invisible">
-                        <b>回</b>
-                        <span class="count"></span>
-                    </div>
-                    <div class="new_fav invisible">
-                        <span class="new_fav_icon">
-                            <i class="material-icons in">favorite</i>
-                            <i class="material-icons out">favorite</i>
-                        </span>
-                        <span class="count"></span>
-                    </div>
-                    <div class="source">
-                        <a href="" target="_brank"><i class="material-icons">open_in_new</i></a>
-                    </div>
-                </div>
-                <div class="comment_list empty folded"></div>
-                <div class="comment_tail">
-                    <i class="material-icons">expand_more</i>
-                </div>
-            </div>
-        `)
-    };
     const reason = musicData.reasons[0];
     const newNode = document.createDocumentFragment();
 
-    newNode.append(stc.timetableItemTemplate.cloneNode(true));
+    newNode.appendChild(templates.timetableItem.cloneNode(true));
 
     switch (reason.type) {
         case 'favorite':
-            newNode.querySelector('.reason .text')!.append(stc.reasonTextFavTemplate.cloneNode(true));
+            newNode.querySelector('.reason .text')!.appendChild(templates.reasonFav.cloneNode(true));
             if (!options.display_all) newNode.querySelector('.reason')!.classList.add('invisible');
             break;
         case 'add_playlist':
-            newNode.querySelector('.reason .text')!.append(stc.reasonTextPlaylistTemplate.cloneNode(true));
+            newNode.querySelector('.reason .text')!.appendChild(templates.reasonPlaylist.cloneNode(true));
             if (!options.display_all) newNode.querySelector('.reason')!.classList.add('invisible');
             break;
         case 'priority_playlist':
             if (musicData.presenter_user_ids?.includes(reason.user_id)) {
-                newNode.querySelector('.reason .text')!.append(stc.reasonTextSpecialTemplate.cloneNode(true));
+                newNode.querySelector('.reason .text')!.appendChild(templates.reasonSpecial.cloneNode(true));
             } else {
-                newNode.querySelector('.reason .text')!.append(stc.reasonTextPriorityTemplate.cloneNode(true));
+                newNode.querySelector('.reason .text')!.appendChild(templates.reasonPriority.cloneNode(true));
                 newNode.querySelector<HTMLLinkElement>('.reason .priority_list')!.href = `https://kiite.jp/playlist/${reason.list_id}`;
             }
 
@@ -340,11 +247,11 @@ function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], co
     return newNode;
 }
 
-const timetableCommentTemplate = new Range().createContextualFragment(`<div class="comment"><div class="comment_icon" style=""></div><div class="comment_text"></div></div>`);
 function timetableCommentCreate(dataArr: CommentDataType[]) {
     const commentList = document.createDocumentFragment();
     for (const itemData of dataArr) {
-        const newNode = timetableCommentTemplate.cloneNode(true) as Element;
+        const newNode = templates.commentItem.cloneNode(true);
+        if (!(newNode instanceof Element)) continue;
         newNode.querySelector<HTMLDivElement>('div.comment_icon')!.style.backgroundImage = `url("${userIcons.get(itemData.user_id).avatar_url}")`;
         newNode.querySelector<HTMLDivElement>('div.comment_text')!.textContent = itemData.text;
         switch (itemData.type) {
