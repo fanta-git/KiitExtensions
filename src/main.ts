@@ -1,47 +1,28 @@
+import options from './util/options';
 import './scss/main.scss'
 import type { ReasonPriorityWithComment, ReturnCafeSong, User } from './util/apiTypes';
 import fetchCafeAPI from './util/fetchCafeAPI';
+import chromeStorage from './util/chromeStorage';
 
-type commentDataType = {
+type CommentDataType = {
     user_id: number,
     text: string,
     type: 'user' | 'priority' | 'presenter'
 };
 
-const options = {
-    comment_fold: false,
-    display_all: true,
-    comment_log: true,
-    notification_music: true,
-    notification_comment: true,
-    timetable_max: 100,
-    wait_time: 3000,
-    interval_time: 1000,
-    color_threshold: 6,
-};
-
 async function main() {
-    Object.assign(options, await storage.get('options') ?? {});
     setMenuDom();
+    Object.assign(options, await chromeStorage.get('options'));
 
     window.addEventListener('focus', () => notification.close());
+    window.addEventListener('beforeunload', () => notification.close());
 
-    window.addEventListener('beforeunload', () => {
-        storage.save();
-        notification.close();
-    });
-
-    chrome.storage.onChanged.addListener((changes, namespace) => {
-        for (const [key, { oldValue, newValue }] of Object.entries(changes)) {
-            console.log('CHANGED', newValue);
-            switch (key) {
-                case 'music_data':
-                    if (newValue) setMusicDetail(newValue);
-                    break;
-                case 'options':
-                    location.reload();
-                    break;
-            }
+    chromeStorage.onChange(changes => {
+        if (changes.musicData !== undefined) {
+            setMusicDetail(changes.musicData.newValue);
+        }
+        if (changes.options !== undefined) {
+            location.reload();
         }
     });
 
@@ -93,11 +74,10 @@ const userIcons = new class {
 }
 
 const notification = new class {
-    #flag = false;
     #ntcList: Notification[] = [];
 
-    send(text: string, opt = {}) {
-        if (this.#flag && !document.hasFocus()) {
+    async send(text: string, opt = {}) {
+        if (await chromeStorage.get('flag') && !document.hasFocus()) {
             const ntcItem = new Notification(text, opt);
             this.#ntcList.push(ntcItem);
         }
@@ -108,44 +88,19 @@ const notification = new class {
     }
 
     async set(e: Element) {
-        this.#flag = (await storage.get('ntc_flag') as boolean | null) ?? false;
-        e.querySelector('.material-icons')!.textContent = (this.#flag ? 'notifications_active' : 'notifications_off');
+        e.querySelector('.material-icons')!.textContent = await chromeStorage.get('flag')
+            ? 'notifications_active'
+            : 'notifications_off';
     }
 
     async toggle(e: Event) {
         const ct = e.currentTarget as Element;
         if (ct === null) return;
-        if (this.#flag || await Notification.requestPermission() === 'granted') {
-            this.#flag = !this.#flag;
-            storage.update('ntc_flag', this.#flag);
-            ct.querySelector('.material-icons')!.textContent = (this.#flag ? 'notifications_active' : 'notifications_off');
+        const nowFlag = await chromeStorage.get('flag');
+        if (nowFlag || await Notification.requestPermission() === 'granted') {
+            chromeStorage.set('flag', !nowFlag);
+            ct.querySelector('.material-icons')!.textContent = (!nowFlag ? 'notifications_active' : 'notifications_off');
         }
-    }
-}
-
-const storage = new class {
-    #pool: Record<string, any> = {};
-    get(key: string) {
-        return new Promise(resolve => (
-            chrome.storage.local.get(key, r => {
-                console.log('GET', r);
-                resolve(r[key]);
-            })
-        ));
-    }
-
-    update(key: string, value: any) {
-        this.#pool[key] = value;
-    }
-
-    save() {
-        return new Promise<void>(resolve => (
-            chrome.storage.local.set(this.#pool, () => {
-                console.log('SET', this.#pool);
-                this.#pool = {};
-                resolve();
-            })
-        ));
     }
 }
 
@@ -251,7 +206,7 @@ function setMusicDetail(musicInfo: any) {
     );
 }
 
-function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], commentData: commentDataType[]) {
+function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], commentData: CommentDataType[]) {
     const stc = (createTimetableItem as any).staticVariable ??= {
         reasonTextPriorityTemplate: new Range().createContextualFragment(`<a class="user_name" href="" target="_blank"></a>さんの<a class="priority_list" href="" target="_blank">イチ推しリスト</a>の曲です`),
         reasonTextFavTemplate: new Range().createContextualFragment(`<a class="user_name" href="" target="_blank"></a>さんの<b class="fav">お気に入り</b>の曲です`),
@@ -316,7 +271,7 @@ function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], co
 
             const reasonCommentUsers = musicData.reasons.filter(v => v.hasOwnProperty('playlist_comment')) as ReasonPriorityWithComment[];
             if (reasonCommentUsers.length) {
-                const reasonCommentData: commentDataType[] = [];
+                const reasonCommentData: CommentDataType[] = [];
                 for (const priorityList of reasonCommentUsers) {
                     userIcons.add(priorityList.user);
                     reasonCommentData.push({
@@ -394,7 +349,7 @@ function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], co
 }
 
 const timetableCommentTemplate = new Range().createContextualFragment(`<div class="comment"><div class="comment_icon" style=""></div><div class="comment_text"></div></div>`);
-function timetableCommentCreate(dataArr: commentDataType[]) {
+function timetableCommentCreate(dataArr: CommentDataType[]) {
     const commentList = document.createDocumentFragment();
     for (const itemData of dataArr) {
         const newNode = timetableCommentTemplate.cloneNode(true) as Element;
@@ -438,14 +393,14 @@ function getTimestampStr(lag: number) {
 
 const observeCafeStc = {
     endtime: null as null | number,
-    commentData: {} as Record<string, commentDataType[]>,
+    commentData: {} as Record<string, CommentDataType[]>,
     obsComment: {} as Record<number, string>
 };
 async function observeCafe() {
     if (observeCafeStc.endtime === null) {
         const timetableData = await fetchCafeAPI('/api/cafe/timetable', { limit: options.timetable_max });
         const rotateHistory = await fetchCafeAPI('/api/cafe/rotate_users', { ids: timetableData.map(e => e.id) });
-        observeCafeStc.commentData = (await storage.get('commentData') ?? {}) as typeof observeCafeStc['commentData'];
+        observeCafeStc.commentData = await chromeStorage.get('commentData') ?? {};
         observeCafeStc.commentData[timetableData[0].id] ??= [];
 
         const timetable = document.createDocumentFragment();
@@ -503,7 +458,7 @@ async function observeCafe() {
         qsRotate.querySelector('.count')!.textContent = gestureRotateUserIds.length.toString();
     }
 
-    const newComments: commentDataType[] = [];
+    const newComments: CommentDataType[] = [];
     for (const element of document.querySelectorAll<HTMLDivElement>('#cafe_space div.user')) {
         const commentUserId = Number(element.dataset.user_id);
         const commentText = element.querySelector('.comment')!.textContent ?? "";
@@ -535,7 +490,7 @@ async function observeCafe() {
 
         observeCafeStc.commentData[qsTimetableFirst.dataset.id!].push(...newComments);
 
-        storage.update('commentData', observeCafeStc.commentData);
+        chromeStorage.set('commentData', observeCafeStc.commentData);
 
         if (options.comment_log) {
             qsTimetableFirst.querySelector('.comment_list')!.append(timetableCommentCreate(newComments));
@@ -668,7 +623,7 @@ function nicoURL(match: string, type: string) {
     return `<a href="${url}" target="_blank">${match}</a>`
 }
 
-window.onload = main;
+window.addEventListener('load', main);
 
 // vscのバグ回避のため
 export {};

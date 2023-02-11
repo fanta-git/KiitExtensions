@@ -7,7 +7,7 @@ module.exports = {
     entry: {
         main: path.join(__dirname, "src/main.ts"),
         iframe: path.join(__dirname, "src/iframe.ts"),
-        options: path.join(__dirname, "src/options.ts"),
+        options: path.join(__dirname, "src/options_page.ts"),
     },
     output: {
         path: path.join(__dirname, "dist"),
@@ -46,8 +46,5 @@ module.exports = {
     ],
     devtool: 'cheap-module-source-map',
     cache: true,
-    watchOptions: {
-        poll: true,
-    }
 };
 

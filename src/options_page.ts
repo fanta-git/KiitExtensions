@@ -1,4 +1,5 @@
-import './scss/options.scss'
+import './scss/options_page.scss'
+import chromeStorage from './util/chromeStorage';
 
 type options = {
     comment_fold: boolean,
@@ -24,12 +25,8 @@ const defaultOptions: options = {
     color_threshold: 6,
 };
 
-const optionsPromise = new Promise<options>(resolve => {
-    chrome.storage.local.get({ options: {} }, r => resolve(r.options));
-});
-
 async function main() {
-    const options = { ...defaultOptions, ...await optionsPromise };
+    const options = { ...defaultOptions, ...await chromeStorage.get('options') };
     setValue(options);
 
     document.querySelector('#options_wrapper')?.addEventListener('submit', event => {
@@ -41,8 +38,9 @@ async function main() {
         setValue(defaultOptions);
     });
 
-    document.querySelector('#clear_btn')?.addEventListener('click', () => {
-        chrome.storage.local.clear().then(window.close);
+    document.querySelector('#clear_btn')?.addEventListener('click', async () => {
+        await chromeStorage.clear();
+        window.close();
     });
 }
 
@@ -79,9 +77,7 @@ function saveValue() {
         }
     }
 
-    return new Promise<void>(resolve => {
-        chrome.storage.local.set({ options: saveOptions }, resolve);
-    })
+    return chromeStorage.set('options', saveOptions as typeof defaultOptions);
 }
 
 window.onload = main;
