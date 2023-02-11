@@ -5,6 +5,7 @@ import fetchCafeAPI from './util/fetchCafeAPI';
 import chromeStorage from './util/chromeStorage';
 import optimizeDescription from './util/optimizeDescription';
 import * as templates from './util/templates';
+import type {} from 'typed-query-selector';
 
 type CommentDataType = {
     user_id: number,
@@ -90,42 +91,46 @@ const notification = new class {
     }
 
     async set(e: Element) {
-        e.querySelector('.material-icons')!.textContent = await chromeStorage.get('flag')
+        e.querySelector('i.material-icons')!.textContent = await chromeStorage.get('flag')
             ? 'notifications_active'
             : 'notifications_off';
     }
 
     async toggle(e: Event) {
-        const ct = e.currentTarget;
-        if (!(ct instanceof Element) || ct === null) return;
+        const ct = e.currentTarget as Element | null;
+        if (ct === null) return;
         const nowFlag = await chromeStorage.get('flag');
         if (nowFlag || await Notification.requestPermission() === 'granted') {
             chromeStorage.set('flag', !nowFlag);
-            ct.querySelector('.material-icons')!.textContent = (!nowFlag ? 'notifications_active' : 'notifications_off');
+            ct.querySelector('i.material-icons')!.textContent = !nowFlag
+                ? 'notifications_active'
+                : 'notifications_off';
         }
     }
 }
 
 function setMenuDom() {
-    document.querySelector('#now_playing_info .source')!.after(templates.extensionMenu);
-    notification.set(document.querySelector('#ntc_toggle')!);
-    document.querySelector('#reasons')!.after(templates.musicData);
+    document.querySelector('#now_playing_info div.source')!.after(templates.extensionMenu);
+    notification.set(document.querySelector('div#ntc_toggle')!);
+    document.querySelector('div#reasons')!.after(templates.musicData);
     document.querySelector('#cafe_menu > ul')!.appendChild(templates.timetableLabel);
-    document.querySelector('#cafe')!.appendChild(templates.timetable);
+    document.querySelector('div#cafe')!.appendChild(templates.timetable);
 
-    const qsCafe = document.querySelector('#cafe')!;
-    const qsaMenuLi = document.querySelectorAll<HTMLLIElement>('#cafe_menu > ul > li');
-    const qsRdIcon = document.querySelector('#rd_toggle .material-icons')!;
+    const qsCafe = document.querySelector('div#cafe')!;
+    const qsaMenuLi = document.querySelectorAll('#cafe_menu > ul > li');
+    const qsRdIcon = document.querySelector('#rd_toggle i.material-icons')!;
 
-    document.querySelector('#rd_toggle')?.addEventListener('click', () => {
-        qsRdIcon.textContent = (qsRdIcon.textContent === 'info' ? 'people' : 'info');
+    document.querySelector('div#rd_toggle')?.addEventListener('click', () => {
+        qsRdIcon.textContent = (qsRdIcon.textContent === 'info')
+            ? 'people'
+            : 'info';
         qsCafe.classList.toggle('view_music_data');
     });
 
     if (options.notification_music || options.notification_comment) {
-        document.querySelector('#ntc_toggle')?.addEventListener('click', e => notification.toggle(e));
+        document.querySelector('div#ntc_toggle')?.addEventListener('click', e => notification.toggle(e));
     } else {
-        document.querySelector('#ntc_toggle')!.remove();
+        document.querySelector('div#ntc_toggle')!.remove();
     }
 
     for (const element of qsaMenuLi) {
@@ -139,10 +144,10 @@ function setMenuDom() {
 function setMusicDetail(musicInfo: any) {
     if (options.notification_music) notification.send(musicInfo.title, { icon: musicInfo.thumbnailUrl });
 
-    document.querySelector('#viewCounter')!.textContent = parseInt(musicInfo.viewCounter).toLocaleString();
-    document.querySelector('#mylistCounter')!.textContent = parseInt(musicInfo.mylistCounter).toLocaleString();
-    document.querySelector('#commentCounter')!.textContent = parseInt(musicInfo.thread.commentCounter).toLocaleString();
-    document.querySelector('#music_description')!.innerHTML = optimizeDescription(musicInfo.description);
+    document.querySelector('div#viewCounter')!.textContent = parseInt(musicInfo.viewCounter).toLocaleString();
+    document.querySelector('div#mylistCounter')!.textContent = parseInt(musicInfo.mylistCounter).toLocaleString();
+    document.querySelector('div#commentCounter')!.textContent = parseInt(musicInfo.thread.commentCounter).toLocaleString();
+    document.querySelector('div#music_description')!.innerHTML = optimizeDescription(musicInfo.description);
 }
 
 function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], commentData: CommentDataType[]) {
@@ -150,22 +155,23 @@ function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], co
     const newNode = document.createDocumentFragment();
 
     newNode.appendChild(templates.timetableItem.cloneNode(true));
+    const reasonText = newNode.querySelector('.reason div.text')!;
 
     switch (reason.type) {
         case 'favorite':
-            newNode.querySelector('.reason .text')!.appendChild(templates.reasonFav.cloneNode(true));
-            if (!options.display_all) newNode.querySelector('.reason')!.classList.add('invisible');
+            reasonText.appendChild(templates.reasonFav.cloneNode(true));
+            if (!options.display_all) newNode.querySelector('div.reason')!.classList.add('invisible');
             break;
         case 'add_playlist':
-            newNode.querySelector('.reason .text')!.appendChild(templates.reasonPlaylist.cloneNode(true));
-            if (!options.display_all) newNode.querySelector('.reason')!.classList.add('invisible');
+            reasonText.appendChild(templates.reasonPlaylist.cloneNode(true));
+            if (!options.display_all) newNode.querySelector('div.reason')!.classList.add('invisible');
             break;
         case 'priority_playlist':
             if (musicData.presenter_user_ids?.includes(reason.user_id)) {
-                newNode.querySelector('.reason .text')!.appendChild(templates.reasonSpecial.cloneNode(true));
+                reasonText.appendChild(templates.reasonSpecial.cloneNode(true));
             } else {
-                newNode.querySelector('.reason .text')!.appendChild(templates.reasonPriority.cloneNode(true));
-                newNode.querySelector<HTMLLinkElement>('.reason .priority_list')!.href = `https://kiite.jp/playlist/${reason.list_id}`;
+                reasonText.appendChild(templates.reasonPriority.cloneNode(true));
+                newNode.querySelector('.reason a.priority_list')!.href = `https://kiite.jp/playlist/${reason.list_id}`;
             }
 
             const reasonCommentUsers = musicData.reasons.filter(v => v.hasOwnProperty('playlist_comment')) as ReasonPriorityWithComment[];
@@ -179,70 +185,69 @@ function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], co
                         type: 'priority'
                     });
                 }
-                newNode.querySelector('.comment_list')!.append(timetableCommentCreate(reasonCommentData));
-                newNode.querySelector('.comment_list')!.classList.remove('empty');
+                const commentList = newNode.querySelector('div.comment_list')!;
+                commentList.append(timetableCommentCreate(reasonCommentData));
+                commentList.classList.remove('empty');
             }
             break;
     }
 
     const userIconData = userIcons.get(reason.user_id)
-    newNode.querySelector<HTMLDivElement>('.reason div.icon')!.style.backgroundImage = `url("${userIconData.avatar_url}")`;
-    newNode.querySelector<HTMLLinkElement>('.reason a.user_name')!.textContent = userIconData.nickname;
-    newNode.querySelector<HTMLLinkElement>('.reason a.user_name')!.href = `https://kiite.jp/user/${userIconData.user_name}`;
+    newNode.querySelector('.reason div.icon')!.style.backgroundImage = `url("${userIconData.avatar_url}")`;
+    newNode.querySelector('.reason a.user_name')!.textContent = userIconData.nickname;
+    newNode.querySelector('.reason a.user_name')!.href = `https://kiite.jp/user/${userIconData.user_name}`;
 
-    newNode.querySelector<HTMLDivElement>('div.timetable_item')!.dataset.timestamp = new Date(musicData.start_time).getTime().toString();
-    newNode.querySelector<HTMLDivElement>('div.timetable_item')!.dataset.id = musicData.id.toString();
-    newNode.querySelector<HTMLDivElement>('div.thumbnail')!.style.backgroundImage = `url("${musicData.thumbnail.replace('http://', 'https://')}")`;
+    newNode.querySelector('div.timetable_item')!.dataset.timestamp = new Date(musicData.start_time).getTime().toString();
+    newNode.querySelector('div.timetable_item')!.dataset.id = musicData.id.toString();
+    newNode.querySelector('div.thumbnail')!.style.backgroundImage = `url("${musicData.thumbnail.replace('http://', 'https://')}")`;
 
-    newNode.querySelector<HTMLDivElement>('div.title')!.textContent = musicData.title;
-    newNode.querySelector<HTMLDivElement>('div.artist')!.dataset.artist_id = musicData.artist_id?.toString() ?? "";
-    newNode.querySelector<HTMLSpanElement>('.artist span')!.textContent = musicData.artist_name;
-    newNode.querySelector<HTMLLinkElement>('.source > a')!.href = `https://kiite.jp/search/song?keyword=${musicData.baseinfo.video_id}`;
+    newNode.querySelector('div.title')!.textContent = musicData.title;
+    newNode.querySelector('div.artist')!.dataset.artist_id = musicData.artist_id?.toString() ?? "";
+    newNode.querySelector('.artist span')!.textContent = musicData.artist_name;
+    newNode.querySelector('.source > a')!.href = `https://kiite.jp/search/song?keyword=${musicData.baseinfo.video_id}`;
 
     if (options.comment_log && commentData?.length) {
-        const commentList = newNode.querySelector<HTMLDivElement>('div.comment_list')!;
+        const commentList = newNode.querySelector('div.comment_list')!;
         commentList.append(timetableCommentCreate(commentData));
         commentList.classList.remove('empty');
     }
 
-    newNode.querySelector<HTMLSpanElement>('.music_info .artist span')?.addEventListener('click', async e => {
+    newNode.querySelector('.music_info .artist span')?.addEventListener('click', async e => {
         // TODO: 配置時にaタグとしてつけておくように
         const artist = await fetchCafeAPI('/api/artist/id', { artist_id: (e as any).currentTarget!.parentNode.dataset.artist_id });
         window.open(`https://kiite.jp/creator/${artist?.creator_id}`, '_blank');
     });
 
     if (options.comment_fold) {
-        newNode.querySelector<HTMLDivElement>('div.comment_tail')?.addEventListener('click', e => {
+        newNode.querySelector('div.comment_tail')?.addEventListener('click', e => {
             // TODO: 適切な型付けを
             const timetableItem = (e.target as any).closest('.timetable_item');
             if ((e.ctrlKey && !e.metaKey) || (!e.ctrlKey && e.metaKey)) {
-                const elementFolded = timetableItem.querySelector('.comment_list').classList.contains('folded');
-                if (elementFolded) {
-                    document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
+                const elementFolded = timetableItem.querySelector('div.comment_list').classList.contains('folded');
+                document.querySelectorAll('#timetable_list div.comment_list:not(.empty)').forEach(e => {
+                    if (elementFolded) {
                         e.classList.remove('folded');
-                    });
-                } else {
-                    document.querySelectorAll('#timetable_list .comment_list:not(.empty)').forEach(e => {
+                    } else {
                         e.classList.add('folded');
-                    });
-                }
+                    }
+                });
             } else {
-                timetableItem.querySelector('.comment_list').classList.toggle('folded');
+                timetableItem.querySelector('div.comment_list').classList.toggle('folded');
             }
         });
     } else {
-        newNode.querySelector<HTMLDivElement>('div.comment_list')!.classList.remove('folded');
-        newNode.querySelector<HTMLDivElement>('div.comment_tail')!.remove();
+        newNode.querySelector('div.comment_list')!.classList.remove('folded');
+        newNode.querySelector('div.comment_tail')!.remove();
     }
 
     if (musicData.new_fav_user_ids?.length) {
-        newNode.querySelector<HTMLDivElement>('div.new_fav')!.classList.remove('invisible');
-        newNode.querySelector<HTMLSpanElement>('.new_fav > span.count')!.textContent = musicData.new_fav_user_ids.length.toString();
+        newNode.querySelector('div.new_fav')!.classList.remove('invisible');
+        newNode.querySelector('.new_fav > span.count')!.textContent = musicData.new_fav_user_ids.length.toString();
     }
 
     if (rotateData?.length) {
-        newNode.querySelector<HTMLDivElement>('div.rotate')!.classList.remove('invisible');
-        newNode.querySelector<HTMLSpanElement>('.rotate > span.count')!.textContent = rotateData.length.toString();
+        newNode.querySelector('div.rotate')!.classList.remove('invisible');
+        newNode.querySelector('.rotate > span.count')!.textContent = rotateData.length.toString();
     }
     return newNode;
 }
@@ -250,32 +255,32 @@ function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], co
 function timetableCommentCreate(dataArr: CommentDataType[]) {
     const commentList = document.createDocumentFragment();
     for (const itemData of dataArr) {
-        const newNode = templates.commentItem.cloneNode(true);
-        if (!(newNode instanceof Element)) continue;
-        newNode.querySelector<HTMLDivElement>('div.comment_icon')!.style.backgroundImage = `url("${userIcons.get(itemData.user_id).avatar_url}")`;
-        newNode.querySelector<HTMLDivElement>('div.comment_text')!.textContent = itemData.text;
+        const newNode = templates.commentItem.cloneNode(true) as Element;
+        newNode.querySelector('div.comment_icon')!.style.backgroundImage = `url("${userIcons.get(itemData.user_id).avatar_url}")`;
+        newNode.querySelector('div.comment_text')!.textContent = itemData.text;
+        const classList = newNode.querySelector('div.comment_text')!.classList;
         switch (itemData.type) {
             case 'presenter':
-                newNode.querySelector('.comment_text')!.classList.add('presenter');
+                classList.add('presenter');
                 break;
             case 'priority':
-                newNode.querySelector('.comment_text')!.classList.add('reason_comment_text');
+                classList.add('reason_comment_text');
                 break;
         }
-        commentList.append(newNode);
+        commentList.appendChild(newNode);
     }
     return commentList;
 }
 
 function updateTimecounter(timetable: DocumentFragment | Element) {
     const nowtime = Date.now();
-    timetable.querySelectorAll<HTMLDivElement>('div.timetable_item').forEach((element, index) => {
+    timetable.querySelectorAll('div.timetable_item').forEach((element, index) => {
         if (index) {
             element.classList.remove('onair_now');
         } else {
             element.classList.add('onair_now')
         }
-        const timestamp = element.querySelector('.timestamp');
+        const timestamp = element.querySelector('div.timestamp');
         if (timestamp) {
             const time = Number(element.dataset.timestamp ?? 0);
             timestamp.textContent = getTimestampStr((nowtime - time) / 1000);
@@ -318,10 +323,10 @@ async function observeCafe() {
         }
         updateTimecounter(timetable);
 
-        document.querySelector<HTMLDivElement>('div#timetable_list')!.replaceChildren(timetable);
+        document.querySelector('div#timetable_list')!.replaceChildren(timetable);
     } else if (observeCafeStc.endtime + options.wait_time < Date.now()) {
         const newItem = (await fetchCafeAPI('/api/cafe/timetable', { limit: 1 }))[0];
-        const lastId = document.querySelector<HTMLDivElement>(`#timetable_list div.timetable_item:nth-child(${options.timetable_max})`)!.dataset.id!;
+        const lastId = document.querySelector(`#timetable_list div.timetable_item:nth-child(${options.timetable_max})`)!.dataset.id!;
         observeCafeStc.endtime = new Date(newItem.start_time).getTime() + newItem.msec_duration;
         observeCafeStc.commentData[newItem.id] ??= [];
         for (const commentMusicId of Object.keys(observeCafeStc.commentData)) {
@@ -330,37 +335,38 @@ async function observeCafe() {
         userIcons.save(newItem.reasons[0].user_id);
         userIcons.save(...newItem.reasons.filter(e => e.hasOwnProperty('playlist_comment')).map(e => e.user_id));
         await userIcons.load();
-        document.querySelectorAll<HTMLDivElement>(`#timetable_list div.timetable_item:nth-child(n + ${options.timetable_max})`).forEach(e => e.remove());
-        document.querySelector<HTMLDivElement>('div#timetable_list')!.prepend(createTimetableItem(newItem, [], []));
-        updateTimecounter(document.querySelector('#timetable_list')!);
+        document.querySelectorAll(`#timetable_list div.timetable_item:nth-child(n + ${options.timetable_max})`).forEach(e => e.remove());
+        const timetableList = document.querySelector('div#timetable_list')!;
+        timetableList.prepend(createTimetableItem(newItem, [], []));
+        updateTimecounter(timetableList);
     }
 
-    const qsTimetableFirst = document.querySelector<HTMLDivElement>('#timetable_list div.timetable_item:first-child');
+    const qsTimetableFirst = document.querySelector('#timetable_list div.timetable_item:first-child');
     if (qsTimetableFirst === null) return null;
-    const qsRotate = qsTimetableFirst.querySelector('.rotate')!;
-    const qsNewFav = qsTimetableFirst.querySelector('.new_fav')!;
+    const qsRotate = qsTimetableFirst.querySelector('div.rotate')!;
+    const qsNewFav = qsTimetableFirst.querySelector('div.new_fav')!;
     const newFavUserIds = [];
     const gestureRotateUserIds = [];
 
-    for (const element of document.querySelectorAll<HTMLDivElement>('#cafe_space div.user')) {
+    for (const element of document.querySelectorAll('#cafe_space div.user')) {
         if (element.classList.contains('new_fav')) newFavUserIds.push(element.dataset.user_id);
         if (element.classList.contains('gesture_rotate')) gestureRotateUserIds.push(element.dataset.user_id);
     }
 
-    if (Number(qsNewFav.querySelector<HTMLSpanElement>('span.count')!.textContent) < newFavUserIds.length) {
+    if (Number(qsNewFav.querySelector('span.count')!.textContent) < newFavUserIds.length) {
         qsNewFav.classList.remove('invisible');
-        qsNewFav.querySelector<HTMLSpanElement>('span.count')!.textContent = newFavUserIds.length.toString();
+        qsNewFav.querySelector('span.count')!.textContent = newFavUserIds.length.toString();
     }
 
-    if (Number(qsRotate.querySelector('.count')!.textContent) < gestureRotateUserIds.length) {
+    if (Number(qsRotate.querySelector('span.count')!.textContent) < gestureRotateUserIds.length) {
         qsRotate.classList.remove('invisible');
-        qsRotate.querySelector('.count')!.textContent = gestureRotateUserIds.length.toString();
+        qsRotate.querySelector('span.count')!.textContent = gestureRotateUserIds.length.toString();
     }
 
     const newComments: CommentDataType[] = [];
-    for (const element of document.querySelectorAll<HTMLDivElement>('#cafe_space div.user')) {
+    for (const element of document.querySelectorAll('#cafe_space div.user')) {
         const commentUserId = Number(element.dataset.user_id);
-        const commentText = element.querySelector('.comment')!.textContent ?? "";
+        const commentText = element.querySelector('div.comment')!.textContent ?? "";
         if (observeCafeStc.obsComment[commentUserId] === undefined) {
             observeCafeStc.obsComment[commentUserId] = commentText;
         } else if (observeCafeStc.obsComment[commentUserId] !== commentText) {
@@ -392,8 +398,8 @@ async function observeCafe() {
         chromeStorage.set('commentData', observeCafeStc.commentData);
 
         if (options.comment_log) {
-            qsTimetableFirst.querySelector('.comment_list')!.append(timetableCommentCreate(newComments));
-            qsTimetableFirst.querySelector('.comment_list')!.classList.remove('empty');
+            qsTimetableFirst.querySelector('div.comment_list')!.appendChild(timetableCommentCreate(newComments));
+            qsTimetableFirst.querySelector('div.comment_list')!.classList.remove('empty');
         }
     }
 }

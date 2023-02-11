@@ -1,5 +1,6 @@
 import './scss/options_page.scss'
 import chromeStorage from './util/chromeStorage';
+import type {} from 'typed-query-selector';
 
 type options = {
     comment_fold: boolean,
@@ -29,16 +30,16 @@ async function main() {
     const options = { ...defaultOptions, ...await chromeStorage.get('options') };
     setValue(options);
 
-    document.querySelector('#options_wrapper')?.addEventListener('submit', event => {
+    document.querySelector('form#options_wrapper')?.addEventListener('submit', event => {
         event.preventDefault();
         saveValue().then(window.close);
     });
 
-    document.querySelector('#reset_btn')?.addEventListener('click', () => {
+    document.querySelector('button#reset_btn')?.addEventListener('click', () => {
         setValue(defaultOptions);
     });
 
-    document.querySelector('#clear_btn')?.addEventListener('click', async () => {
+    document.querySelector('button#clear_btn')?.addEventListener('click', async () => {
         await chromeStorage.clear();
         window.close();
     });
@@ -49,7 +50,7 @@ function iskey<T extends Record<string | number | symbol, any>>(obj: T, key: str
 }
 
 function setValue(setOptions: options) {
-    for (const optionDom of document.querySelectorAll<HTMLInputElement>('.option_item > input')) {
+    for (const optionDom of document.querySelectorAll('.option_item > input')) {
         if (!iskey(setOptions, optionDom.name)) continue;
 
         if (optionDom.type === 'checkbox') {
@@ -65,7 +66,7 @@ function setValue(setOptions: options) {
 function saveValue() {
     // TODO: もっと良い感じの書き方探す
     const saveOptions: Record<string, boolean | number> = { ...defaultOptions };
-    for (const optionDom of document.querySelectorAll<HTMLInputElement>('.option_item > input')) {
+    for (const optionDom of document.querySelectorAll('.option_item > input')) {
         if (!iskey(saveOptions, optionDom.name)) continue;
 
         if (optionDom.type === 'checkbox') {
