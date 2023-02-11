@@ -1,3 +1,5 @@
+import type { Options } from "./options";
+
 type commentDataType = {
     user_id: number,
     text: string,
@@ -5,17 +7,7 @@ type commentDataType = {
 };
 
 type StorageType = {
-    options:  {
-        comment_fold: boolean,
-        display_all: boolean,
-        comment_log: boolean,
-        notification_music: boolean,
-        notification_comment: boolean,
-        timetable_max: number,
-        wait_time: number,
-        interval_time: number,
-        color_threshold: number
-    },
+    options: Options,
     flag: boolean,
     commentData: Record<string, commentDataType[]>,
     musicData: any

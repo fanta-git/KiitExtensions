@@ -1,4 +1,4 @@
-type Options = {
+export type Options = {
     comment_fold: boolean;
     display_all: boolean;
     comment_log: boolean;
@@ -10,7 +10,7 @@ type Options = {
     color_threshold: number;
 };
 
-const defaultOptions: Options = {
+const options: Options = {
     comment_fold: false,
     display_all: true,
     comment_log: true,
@@ -22,4 +22,4 @@ const defaultOptions: Options = {
     color_threshold: 6,
 };
 
-export default defaultOptions;
+export default options;
