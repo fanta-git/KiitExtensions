@@ -1,16 +1,10 @@
-import { ReasonPriorityWithComment, ReturnCafeSong, SelectReasonsWithComment, User } from "./apiTypes";
+import { ReasonPriorityWithComment, ReturnCafeSongWithComment, SelectReasons, SelectReasonsWithComment, User } from "./apiTypes";
 import chromeStorage from "./chromeStorage";
 import fetchCafeAPI from "./fetchCafeAPI";
 import notice from "./notice";
 import options from "./options";
 import * as templates from './templates';
 import { CommentDataType } from "./types";
-
-const observeCafeStc = {
-    endtime: null as null | number,
-    commentData: {} as Record<string, CommentDataType[]>,
-    obsComment: {} as Record<number, string>
-};
 
 const userData = new Map<number, User>();
 const emptyData = {
@@ -21,95 +15,63 @@ const emptyData = {
     user_name: ""
 };
 
+const commentLog: Record<string, CommentDataType[]> = {};
+let endtime: null | number;
 async function observeCafe() {
-    if (observeCafeStc.endtime === null || observeCafeStc.endtime + options.wait_time < Date.now()) {
+    if (endtime === null || endtime + options.wait_time < Date.now()) {
         const timetableData = await fetchCafeAPI('/api/cafe/timetable', { limit: options.timetable_max, with_comment: true });
         const rotateHistory = await fetchCafeAPI('/api/cafe/rotate_users', { ids: timetableData.map(e => e.id) });
-        observeCafeStc.commentData = await chromeStorage.get('commentData') ?? {};
-        observeCafeStc.commentData[timetableData[0].id] ??= [];
+        Object.assign(commentLog, chromeStorage.get('commentData') ?? {});
 
-        const existUserData = timetableData
-            .flatMap(v => v.reasons.filter((v): v is ReasonPriorityWithComment => v.hasOwnProperty('user')))
-            .map(v => v.user);
-        for (const user of existUserData) userData.set(user.user_id, user);
+        await fetchUserData(timetableData);
+        setTimetable(timetableData, rotateHistory);
+    }
+    updateTopItem();
+}
 
-        const newUsers = new Set<number>();
-        const commentedUserIds = Object.values(observeCafeStc.commentData).flat().map(v => v.user_id);
-        const topReasonUserIds = timetableData.map(v => v.reasons[0].user_id);
-        for (const userId of [...commentedUserIds, ...topReasonUserIds]) {
-            if (newUsers.has(userId) || userData.has(userId)) continue;
-            newUsers.add(userId);
-        }
-
-        const users = await fetchCafeAPI('/api/kiite_users', { user_ids: [...newUsers] });
-        for (const user of users) userData.set(user.user_id, user);
-
+function setTimetable(timetableData: ReturnCafeSongWithComment[], rotateHistory: Record<string, number[]>) {
         const timetable = document.createDocumentFragment();
-        observeCafeStc.endtime = new Date(timetableData[0].start_time).getTime() + timetableData[0].msec_duration;
+        endtime = new Date(timetableData[0].start_time).getTime() + timetableData[0].msec_duration;
 
         for (const musicData of timetableData) {
-            timetable.append(
-                createTimetableItem(musicData, rotateHistory[musicData.id], observeCafeStc.commentData[musicData.id])
+            timetable.appendChild(
+                createTimetableItem(musicData, rotateHistory[musicData.id], commentLog[musicData.id])
             );
         }
         updateTimecounter(timetable);
 
         document.querySelector('div#timetable_list')!.replaceChildren(timetable);
-    }
+}
 
+function updateTopItem() {
+    const { newFavs, rotates, newComments } = getCafeData();
     const qsTimetableFirst = document.querySelector('#timetable_list div.timetable_item:first-child');
     if (qsTimetableFirst === null) return null;
-    const qsRotate = qsTimetableFirst.querySelector('div.rotate')!;
-    const qsNewFav = qsTimetableFirst.querySelector('div.new_fav')!;
-    const newFavUserIds = [];
-    const gestureRotateUserIds = [];
 
-    for (const element of document.querySelectorAll('#cafe_space div.user')) {
-        if (element.classList.contains('new_fav')) newFavUserIds.push(element.dataset.user_id);
-        if (element.classList.contains('gesture_rotate')) gestureRotateUserIds.push(element.dataset.user_id);
+    const qsNewFavCount = qsTimetableFirst.querySelector('.new_fav span.count')!;
+    if (Number(qsNewFavCount!.textContent) < newFavs.length) {
+        qsNewFavCount.parentElement?.classList.remove('invisible');
+        qsNewFavCount!.textContent = newFavs.length.toString();
     }
 
-    if (Number(qsNewFav.querySelector('span.count')!.textContent) < newFavUserIds.length) {
-        qsNewFav.classList.remove('invisible');
-        qsNewFav.querySelector('span.count')!.textContent = newFavUserIds.length.toString();
-    }
-
-    if (Number(qsRotate.querySelector('span.count')!.textContent) < gestureRotateUserIds.length) {
-        qsRotate.classList.remove('invisible');
-        qsRotate.querySelector('span.count')!.textContent = gestureRotateUserIds.length.toString();
-    }
-
-    const newComments: CommentDataType[] = [];
-    for (const element of document.querySelectorAll('#cafe_space div.user')) {
-        const commentUserId = Number(element.dataset.user_id);
-        const commentText = element.querySelector('div.comment')!.textContent ?? "";
-        if (observeCafeStc.obsComment[commentUserId] === undefined) {
-            observeCafeStc.obsComment[commentUserId] = commentText;
-        } else if (observeCafeStc.obsComment[commentUserId] !== commentText) {
-            if (commentText) {
-                newComments.push({
-                    user_id: commentUserId,
-                    text: commentText,
-                    type: 'user'
-                });
-
-                // userIcons.save(commentUserId);
-            }
-            observeCafeStc.obsComment[commentUserId] = commentText;
-        }
+    const qsRotateCount = qsTimetableFirst.querySelector('.rotate span.count')!;
+    if (Number(qsRotateCount!.textContent) < rotates.length) {
+        qsRotateCount.parentElement?.classList.remove('invisible');
+        qsRotateCount!.textContent = rotates.length.toString();
     }
 
     if (newComments.length) {
+        const selectionId = qsTimetableFirst.dataset.id!;
+        commentLog[selectionId] ??= [];
+        commentLog[selectionId].push(...newComments);
+        chromeStorage.set('commentData', commentLog);
+
         if (options.notification_comment) {
             for (const comment of newComments) {
                 const commentUser = userData.get(comment.user_id) ?? emptyData;
                 notice.noticeSend(comment.text, { body: commentUser.nickname, icon: commentUser.avatar_url });
             }
         }
-
-        observeCafeStc.commentData[qsTimetableFirst.dataset.id!].push(...newComments);
-
-        chromeStorage.set('commentData', observeCafeStc.commentData);
 
         if (options.comment_log) {
             qsTimetableFirst.querySelector('div.comment_list')!.appendChild(timetableCommentCreate(newComments));
@@ -118,7 +80,25 @@ async function observeCafe() {
     }
 }
 
-function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], commentData: CommentDataType[]) {
+const userComments = new Map<number, string>();
+function getCafeData() {
+    const users = Array.from(document.querySelectorAll('#cafe_space div.user'));
+
+    const newFavs = users.filter(v => v.classList.contains('new_fav')).map(v => v.dataset.user_id!);
+    const rotates = users.filter(v => v.classList.contains('gesture_rotate')).map(v => v.dataset.user_id!);
+    const newComments = users.map(v => ({
+            user_id: Number(v.dataset.user_id),
+            text: v.querySelector('div.comment')?.textContent ?? "",
+            type: v.classList.contains('presenter') ? ('presenter' as const) : ('user' as const)
+        }))
+        .filter(v => userComments.get(v.user_id) !== v.text);
+
+    for (const comment of newComments) userComments.set(comment.user_id, comment.text);
+
+    return { newFavs, rotates, newComments };
+}
+
+function createTimetableItem(musicData: ReturnCafeSongWithComment, rotateData: number[], commentData: CommentDataType[]) {
     const reason = musicData.reasons[0];
     const newNode = document.createDocumentFragment();
 
@@ -142,11 +122,10 @@ function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], co
                 newNode.querySelector('.reason a.priority_list')!.href = `https://kiite.jp/playlist/${reason.list_id}`;
             }
 
-            const reasonCommentUsers = musicData.reasons.filter(v => v.hasOwnProperty('playlist_comment')) as ReasonPriorityWithComment[];
+            const reasonCommentUsers = musicData.reasons.filter(hasComment);
             if (reasonCommentUsers.length) {
                 const reasonCommentData: CommentDataType[] = [];
                 for (const priorityList of reasonCommentUsers) {
-                    userData.set(priorityList.user_id, priorityList.user);
                     reasonCommentData.push({
                         user_id: priorityList.user_id,
                         text: priorityList.playlist_comment,
@@ -154,7 +133,7 @@ function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], co
                     });
                 }
                 const commentList = newNode.querySelector('div.comment_list')!;
-                commentList.append(timetableCommentCreate(reasonCommentData));
+                commentList.appendChild(timetableCommentCreate(reasonCommentData));
                 commentList.classList.remove('empty');
             }
             break;
@@ -176,7 +155,7 @@ function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], co
 
     if (options.comment_log && commentData?.length) {
         const commentList = newNode.querySelector('div.comment_list')!;
-        commentList.append(timetableCommentCreate(commentData));
+        commentList.appendChild(timetableCommentCreate(commentData));
         commentList.classList.remove('empty');
     }
 
@@ -263,6 +242,28 @@ function getTimestampStr(lag: number) {
     if (lag >= 3600) return `${lag / 3600 | 0}時間前`;
     if (lag >= 60) return `${lag / 60 | 0}分前`;
     return `${lag | 0}秒前`;
+}
+
+function hasComment(reason: SelectReasonsWithComment | SelectReasons): reason is ReasonPriorityWithComment {
+    return reason.hasOwnProperty('user');
+}
+
+async function fetchUserData(timetableData: ReturnCafeSongWithComment[]) {
+    const existUserData = timetableData
+        .flatMap(v => v.reasons.filter(hasComment))
+        .map(v => v.user);
+    for (const user of existUserData) userData.set(user.user_id, user);
+
+    const newUsers = new Set<number>();
+    const commentedUserIds = Object.values(commentLog).flat().map(v => v.user_id);
+    const topReasonUserIds = timetableData.map(v => v.reasons[0].user_id);
+    for (const userId of [...commentedUserIds, ...topReasonUserIds]) {
+        if (newUsers.has(userId) || userData.has(userId)) continue;
+        newUsers.add(userId);
+    }
+
+    const users = await fetchCafeAPI('/api/kiite_users', { user_ids: [...newUsers] });
+    for (const user of users) userData.set(user.user_id, user);
 }
 
 export default observeCafe;
