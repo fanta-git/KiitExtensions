@@ -1,4 +1,4 @@
-const parse = new Range().createContextualFragment;
+const parse = (fragment: string) => new Range().createContextualFragment(fragment);
 
 export const extensionMenu = parse(`
     <div class="rd_toggle" id="rd_toggle">
