@@ -17,31 +17,35 @@ const emptyData = {
 };
 
 const commentLog: Record<string, CommentDataType[]> = {};
-let endtime: null | number;
+let endtime: undefined | number;
 async function observeCafe() {
-    if (endtime === null || endtime + options.wait_time < Date.now()) {
-        const timetableData = await fetchCafeAPI('/api/cafe/timetable', { limit: options.timetable_max, with_comment: true });
-        const rotateHistory = await fetchCafeAPI('/api/cafe/rotate_users', { ids: timetableData.map(e => e.id) });
-        Object.assign(commentLog, await chromeStorage.get('commentData') ?? {});
+    Object.assign(commentLog, await chromeStorage.get('commentData') ?? {});
 
-        await fetchUserData(timetableData);
-        setTimetable(timetableData, rotateHistory);
+    while (true) {
+        if (endtime === undefined || endtime + options.wait_time < Date.now()) {
+            const timetableData = await fetchCafeAPI('/api/cafe/timetable', { limit: options.timetable_max, with_comment: true });
+            const rotateHistory = await fetchCafeAPI('/api/cafe/rotate_users', { ids: timetableData.map(e => e.id) });
+
+            await fetchUserData(timetableData);
+            setTimetable(timetableData, rotateHistory);
+        }
+        updateTopItem();
+        await new Promise(r => setTimeout(r, options.interval_time));
     }
-    updateTopItem();
 }
 
 function setTimetable(timetableData: ReturnCafeSongWithComment[], rotateHistory: Record<string, number[]>) {
-        const timetable = document.createDocumentFragment();
-        endtime = new Date(timetableData[0].start_time).getTime() + timetableData[0].msec_duration;
+    const timetable = document.createDocumentFragment();
+    endtime = new Date(timetableData[0].start_time).getTime() + timetableData[0].msec_duration;
 
-        for (const musicData of timetableData) {
-            timetable.appendChild(
-                createTimetableItem(musicData, rotateHistory[musicData.id], commentLog[musicData.id])
-            );
-        }
-        updateTimecounter(timetable);
+    for (const musicData of timetableData) {
+        timetable.appendChild(
+            createTimetableItem(musicData, rotateHistory[musicData.id], commentLog[musicData.id])
+        );
+    }
+    updateTimecounter(timetable);
 
-        document.querySelector('div#timetable_list')!.replaceChildren(timetable);
+    document.querySelector('div#timetable_list')!.replaceChildren(timetable);
 }
 
 function updateTopItem() {

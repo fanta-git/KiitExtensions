@@ -25,15 +25,7 @@ async function main() {
         }
     });
 
-    intervalCallFunc(options.interval_time, observeCafe);
-}
-
-async function intervalCallFunc(interval: number, func: () => Promise<any> | any) {
-    while (true) {
-        const res = func();
-        await new Promise(r => setTimeout(r, interval));
-        await res;
-    }
+    observeCafe();
 }
 
 function setMenuDom() {
