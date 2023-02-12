@@ -1,42 +1,30 @@
-import type { CommentDataType, NicoEmbedProp, Options } from "./types";
+import { CommentDataType, NicoEmbedProp, Options } from "./types";
 
 type StorageType = {
-    options: Options;
-    flag: boolean;
-    commentData: Record<string, CommentDataType[]>;
-    musicData: NicoEmbedProp;
-};
+    options: Options,
+    flag: boolean,
+    commentData: Record<string, CommentDataType[]>,
+    musicData: NicoEmbedProp
+}
 
-async function get<T extends keyof StorageType>(
-    key: T
-): Promise<StorageType[T]> {
+async function get <T extends keyof StorageType> (key: T): Promise<StorageType[T]> {
     return new Promise<StorageType[T]>((resolve) =>
         chrome.storage.local.get(key, (r) => resolve(r[key]))
     );
 }
 
-async function set<T extends keyof StorageType>(key: T, value: StorageType[T]) {
+async function set <T extends keyof StorageType> (key: T, value: StorageType[T]) {
     return new Promise<void>((resolve) =>
         chrome.storage.local.set({ [key]: value }, resolve)
     );
 }
 
-async function clear() {
-    return new Promise<void>(chrome.storage.local.clear);
+async function clear () {
+    return new Promise<void>(() => chrome.storage.local.clear());
 }
 
-type item = {
-    [K in keyof Partial<StorageType>]: Record<
-        "oldValue" | "newValue",
-        StorageType[K]
-    >;
-};
-async function onChange(
-    callback: (
-        value: item,
-        areaName?: "sync" | "local" | "managed" | "session"
-    ) => any
-) {
+type item = { [K in keyof Partial<StorageType>]: Record<'oldValue' | 'newValue', StorageType[K]> };
+async function onChange (callback: (value: item, areaName?: 'sync' | 'local' | 'managed' | 'session') => any) {
     chrome.storage.onChanged.addListener((changes, areaName) =>
         callback(changes, areaName)
     );
