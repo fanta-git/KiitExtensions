@@ -1,33 +1,11 @@
 import './scss/options_page.scss'
 import chromeStorage from './util/chromeStorage';
 import type {} from 'typed-query-selector';
-
-type options = {
-    comment_fold: boolean,
-    display_all: boolean,
-    comment_log: boolean,
-    notification_music: boolean,
-    notification_comment: boolean,
-    timetable_max: number,
-    wait_time: number,
-    interval_time: number,
-    color_threshold: number
-};
-
-const defaultOptions: options = {
-    comment_fold: false,
-    display_all: true,
-    comment_log: true,
-    notification_music: true,
-    notification_comment: true,
-    timetable_max: 100,
-    wait_time: 3000,
-    interval_time: 1000,
-    color_threshold: 6,
-};
+import { Options } from './util/types';
+import options from './util/options';
 
 async function main() {
-    const options = { ...defaultOptions, ...await chromeStorage.get('options') };
+    Object.assign(options, await chromeStorage.get('options'));
     setValue(options);
 
     document.querySelector('form#options_wrapper')?.addEventListener('submit', event => {
@@ -36,7 +14,7 @@ async function main() {
     });
 
     document.querySelector('button#reset_btn')?.addEventListener('click', () => {
-        setValue(defaultOptions);
+        setValue(options);
     });
 
     document.querySelector('button#clear_btn')?.addEventListener('click', async () => {
@@ -49,7 +27,7 @@ function iskey<T extends Record<string | number | symbol, any>>(obj: T, key: str
     return obj.hasOwnProperty(key);
 }
 
-function setValue(setOptions: options) {
+function setValue(setOptions: Options) {
     for (const optionDom of document.querySelectorAll('.option_item > input')) {
         if (!iskey(setOptions, optionDom.name)) continue;
 
@@ -65,7 +43,7 @@ function setValue(setOptions: options) {
 
 function saveValue() {
     // TODO: もっと良い感じの書き方探す
-    const saveOptions: Record<string, boolean | number> = { ...defaultOptions };
+    const saveOptions: Record<string, boolean | number> = { ...options };
     for (const optionDom of document.querySelectorAll('.option_item > input')) {
         if (!iskey(saveOptions, optionDom.name)) continue;
 
@@ -78,7 +56,7 @@ function saveValue() {
         }
     }
 
-    return chromeStorage.set('options', saveOptions as typeof defaultOptions);
+    return chromeStorage.set('options', saveOptions as Options);
 }
 
 window.onload = main;

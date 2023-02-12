@@ -4,12 +4,7 @@ import fetchCafeAPI from "./fetchCafeAPI";
 import notice from "./notice";
 import options from "./options";
 import * as templates from './templates';
-
-type CommentDataType = {
-    user_id: number,
-    text: string,
-    type: 'user' | 'priority' | 'presenter'
-};
+import { CommentDataType } from "./types";
 
 const observeCafeStc = {
     endtime: null as null | number,

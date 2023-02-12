@@ -6,6 +6,7 @@ import * as templates from './util/templates';
 import type {} from 'typed-query-selector';
 import observeCafe from './util/observeCafe';
 import notice from './util/notice';
+import { NicoEmbedProp } from './util/types';
 
 
 async function main() {
@@ -80,12 +81,16 @@ function setMenuDom() {
     }
 }
 
-function setMusicDetail(musicInfo: any) {
-    if (options.notification_music) notice.noticeSend(musicInfo.title, { icon: musicInfo.thumbnailUrl });
+function setMusicDetail(musicInfo: NicoEmbedProp) {
+    if (options.notification_music) notice.noticeSend(musicInfo.title, {
+        icon: musicInfo.thumbnailUrl,
+        tag: 'musicInfo',
+        requireInteraction: true
+    });
 
-    document.querySelector('div#viewCounter')!.textContent = parseInt(musicInfo.viewCounter).toLocaleString();
-    document.querySelector('div#mylistCounter')!.textContent = parseInt(musicInfo.mylistCounter).toLocaleString();
-    document.querySelector('div#commentCounter')!.textContent = parseInt(musicInfo.thread.commentCounter).toLocaleString();
+    document.querySelector('div#viewCounter')!.textContent = musicInfo.viewCounter.toLocaleString();
+    document.querySelector('div#mylistCounter')!.textContent = musicInfo.mylistCounter.toLocaleString();
+    document.querySelector('div#commentCounter')!.textContent = musicInfo.thread.commentCounter.toLocaleString();
     document.querySelector('div#music_description')!.innerHTML = optimizeDescription(musicInfo.description);
 }
 
