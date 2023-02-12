@@ -1,4 +1,4 @@
-import { ReasonPriorityWithComment, ReturnCafeSong, User } from "./apiTypes";
+import { ReasonPriorityWithComment, ReturnCafeSong, SelectReasonsWithComment, User } from "./apiTypes";
 import chromeStorage from "./chromeStorage";
 import fetchCafeAPI from "./fetchCafeAPI";
 import notice from "./notice";
@@ -11,45 +11,50 @@ const observeCafeStc = {
     commentData: {} as Record<string, CommentDataType[]>,
     obsComment: {} as Record<number, string>
 };
+
+const userData = new Map<number, User>();
+const emptyData = {
+    avatar_url: "https://kiite.jp/img/icon-user.jpg",
+    id: null,
+    nickname: "CafeUser",
+    user_id: 0,
+    user_name: ""
+};
+
 async function observeCafe() {
-    if (observeCafeStc.endtime === null) {
-        const timetableData = await fetchCafeAPI('/api/cafe/timetable', { limit: options.timetable_max });
+    if (observeCafeStc.endtime === null || observeCafeStc.endtime + options.wait_time < Date.now()) {
+        const timetableData = await fetchCafeAPI('/api/cafe/timetable', { limit: options.timetable_max, with_comment: true });
         const rotateHistory = await fetchCafeAPI('/api/cafe/rotate_users', { ids: timetableData.map(e => e.id) });
         observeCafeStc.commentData = await chromeStorage.get('commentData') ?? {};
         observeCafeStc.commentData[timetableData[0].id] ??= [];
+
+        const existUserData = timetableData
+            .flatMap(v => v.reasons.filter((v): v is ReasonPriorityWithComment => v.hasOwnProperty('user')))
+            .map(v => v.user);
+        for (const user of existUserData) userData.set(user.user_id, user);
+
+        const newUsers = new Set<number>();
+        const commentedUserIds = Object.values(observeCafeStc.commentData).flat().map(v => v.user_id);
+        const topReasonUserIds = timetableData.map(v => v.reasons[0].user_id);
+        for (const userId of [...commentedUserIds, ...topReasonUserIds]) {
+            if (newUsers.has(userId) || userData.has(userId)) continue;
+            newUsers.add(userId);
+        }
+
+        const users = await fetchCafeAPI('/api/kiite_users', { user_ids: [...newUsers] });
+        for (const user of users) userData.set(user.user_id, user);
 
         const timetable = document.createDocumentFragment();
         observeCafeStc.endtime = new Date(timetableData[0].start_time).getTime() + timetableData[0].msec_duration;
 
         for (const musicData of timetableData) {
-            userIcons.save(musicData.reasons[0].user_id);
-            userIcons.save(...musicData.reasons.filter(e => e.hasOwnProperty('playlist_comment')).map(e => e.user_id));
-            if (observeCafeStc.commentData[musicData.id] !== undefined) userIcons.save(...observeCafeStc.commentData[musicData.id].map(e => e.user_id));
-        }
-
-        await userIcons.load();
-
-        for (const musicData of timetableData) {
-            timetable.append(createTimetableItem(musicData, rotateHistory[musicData.id], observeCafeStc.commentData[musicData.id]));
+            timetable.append(
+                createTimetableItem(musicData, rotateHistory[musicData.id], observeCafeStc.commentData[musicData.id])
+            );
         }
         updateTimecounter(timetable);
 
         document.querySelector('div#timetable_list')!.replaceChildren(timetable);
-    } else if (observeCafeStc.endtime + options.wait_time < Date.now()) {
-        const newItem = (await fetchCafeAPI('/api/cafe/timetable', { limit: 1 }))[0];
-        const lastId = document.querySelector(`#timetable_list div.timetable_item:nth-child(${options.timetable_max})`)!.dataset.id!;
-        observeCafeStc.endtime = new Date(newItem.start_time).getTime() + newItem.msec_duration;
-        observeCafeStc.commentData[newItem.id] ??= [];
-        for (const commentMusicId of Object.keys(observeCafeStc.commentData)) {
-            if (commentMusicId < lastId) delete observeCafeStc.commentData[commentMusicId];
-        }
-        userIcons.save(newItem.reasons[0].user_id);
-        userIcons.save(...newItem.reasons.filter(e => e.hasOwnProperty('playlist_comment')).map(e => e.user_id));
-        await userIcons.load();
-        document.querySelectorAll(`#timetable_list div.timetable_item:nth-child(n + ${options.timetable_max})`).forEach(e => e.remove());
-        const timetableList = document.querySelector('div#timetable_list')!;
-        timetableList.prepend(createTimetableItem(newItem, [], []));
-        updateTimecounter(timetableList);
     }
 
     const qsTimetableFirst = document.querySelector('#timetable_list div.timetable_item:first-child');
@@ -88,18 +93,16 @@ async function observeCafe() {
                     type: 'user'
                 });
 
-                userIcons.save(commentUserId);
+                // userIcons.save(commentUserId);
             }
             observeCafeStc.obsComment[commentUserId] = commentText;
         }
     }
 
     if (newComments.length) {
-        await userIcons.load();
-
         if (options.notification_comment) {
             for (const comment of newComments) {
-                const commentUser = userIcons.get(comment.user_id);
+                const commentUser = userData.get(comment.user_id) ?? emptyData;
                 notice.noticeSend(comment.text, { body: commentUser.nickname, icon: commentUser.avatar_url });
             }
         }
@@ -143,7 +146,7 @@ function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], co
             if (reasonCommentUsers.length) {
                 const reasonCommentData: CommentDataType[] = [];
                 for (const priorityList of reasonCommentUsers) {
-                    userIcons.add(priorityList.user);
+                    userData.set(priorityList.user_id, priorityList.user);
                     reasonCommentData.push({
                         user_id: priorityList.user_id,
                         text: priorityList.playlist_comment,
@@ -157,7 +160,7 @@ function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], co
             break;
     }
 
-    const userIconData = userIcons.get(reason.user_id)
+    const userIconData = userData.get(reason.user_id) ?? emptyData;
     newNode.querySelector('.reason div.icon')!.style.backgroundImage = `url("${userIconData.avatar_url}")`;
     newNode.querySelector('.reason a.user_name')!.textContent = userIconData.nickname;
     newNode.querySelector('.reason a.user_name')!.href = `https://kiite.jp/user/${userIconData.user_name}`;
@@ -220,8 +223,10 @@ function createTimetableItem(musicData: ReturnCafeSong, rotateData: number[], co
 function timetableCommentCreate(dataArr: CommentDataType[]) {
     const commentList = document.createDocumentFragment();
     for (const itemData of dataArr) {
+        if (!itemData.text) continue;
         const newNode = templates.commentItem.cloneNode(true) as Element;
-        newNode.querySelector('div.comment_icon')!.style.backgroundImage = `url("${userIcons.get(itemData.user_id).avatar_url}")`;
+        const user = userData.get(itemData.user_id) ?? emptyData;
+        newNode.querySelector('div.comment_icon')!.style.backgroundImage = `url("${user.avatar_url}")`;
         newNode.querySelector('div.comment_text')!.textContent = itemData.text;
         const classList = newNode.querySelector('div.comment_text')!.classList;
         switch (itemData.type) {
@@ -258,42 +263,6 @@ function getTimestampStr(lag: number) {
     if (lag >= 3600) return `${lag / 3600 | 0}時間前`;
     if (lag >= 60) return `${lag / 60 | 0}分前`;
     return `${lag | 0}秒前`;
-}
-
-const userIcons = new class {
-    #userData: Record<number, User> = {};
-    #pool: number[] = [];
-    #emptyData = {
-        avatar_url: "https://kiite.jp/img/icon-user.jpg",
-        id: null,
-        nickname: "CafeUser",
-        user_id: 0,
-        user_name: ""
-    };
-
-    save(...user_ids: number[]) {
-        for (const user_id of user_ids) {
-            if (this.#userData[user_id] === undefined && !this.#pool.includes(user_id)) this.#pool.push(user_id);
-        }
-    }
-
-    async load() {
-        if (!this.#pool.length) return null;
-        const res = await fetchCafeAPI('/api/kiite_users', { user_ids: this.#pool });
-        this.add(...res);
-        this.#pool.length = 0;
-    }
-
-    add(...items: User[]) {
-        for (const item of items) {
-            this.#userData[item.user_id] ??= item;
-        }
-    }
-
-    get(user_id: number) {
-        return this.#userData?.[user_id] ?? this.#emptyData;
-        return this.#emptyData;//撮影用
-    }
 }
 
 export default observeCafe;

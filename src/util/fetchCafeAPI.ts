@@ -21,8 +21,9 @@ const fetchCafeAPI: FuncAPI = async (pathname, queryParam = {}) => {
     Object.assign(apiURL, { pathname, search });
     try {
         const response = await attemptFetch(apiURL, FETCH_INIT);
-        console.log(`[${formated}] ${pathname}`);
-        return await response.json() as any;
+        const json = await response.json() as any;
+        console.log(`[${formated}] ${pathname}`, json);
+        return json;
     } catch (e) {
         if (e instanceof Error) {
             throw new Error(`${e.name}: ${e.message}`);
