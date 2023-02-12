@@ -21,7 +21,7 @@ async function observeCafe() {
     if (endtime === null || endtime + options.wait_time < Date.now()) {
         const timetableData = await fetchCafeAPI('/api/cafe/timetable', { limit: options.timetable_max, with_comment: true });
         const rotateHistory = await fetchCafeAPI('/api/cafe/rotate_users', { ids: timetableData.map(e => e.id) });
-        Object.assign(commentLog, chromeStorage.get('commentData') ?? {});
+        Object.assign(commentLog, await chromeStorage.get('commentData') ?? {});
 
         await fetchUserData(timetableData);
         setTimetable(timetableData, rotateHistory);
