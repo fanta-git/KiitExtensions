@@ -36,26 +36,6 @@ async function intervalCallFunc(interval: number, func: () => Promise<any> | any
     }
 }
 
-const notification = new class {
-    async set(e: Element) {
-        e.querySelector('i.material-icons')!.textContent = await chromeStorage.get('flag')
-            ? 'notifications_active'
-            : 'notifications_off';
-    }
-
-    async toggle(e: Event) {
-        const ct = e.currentTarget as Element | null;
-        if (ct === null) return;
-        const nowFlag = await chromeStorage.get('flag');
-        if (nowFlag || await Notification.requestPermission() === 'granted') {
-            chromeStorage.set('flag', !nowFlag);
-            ct.querySelector('i.material-icons')!.textContent = !nowFlag
-                ? 'notifications_active'
-                : 'notifications_off';
-        }
-    }
-}
-
 function setMenuDom() {
     document.querySelector('#now_playing_info div.source')!.after(templates.extensionMenu);
     document.querySelector('div#reasons')!.after(templates.musicData);
