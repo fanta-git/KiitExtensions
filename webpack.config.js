@@ -7,7 +7,7 @@ module.exports = {
     entry: {
         main: path.join(__dirname, "src/main.ts"),
         iframe: path.join(__dirname, "src/iframe.ts"),
-        options: path.join(__dirname, "src/options_page.ts"),
+        options_page: path.join(__dirname, "src/options_page.ts"),
     },
     output: {
         path: path.join(__dirname, "dist"),
