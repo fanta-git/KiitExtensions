@@ -1,6 +1,7 @@
 import { ReasonPriorityWithComment, ReturnCafeSong, User } from "./apiTypes";
 import chromeStorage from "./chromeStorage";
 import fetchCafeAPI from "./fetchCafeAPI";
+import notice from "./notice";
 import options from "./options";
 import * as templates from './templates';
 
@@ -104,8 +105,7 @@ async function observeCafe() {
         if (options.notification_comment) {
             for (const comment of newComments) {
                 const commentUser = userIcons.get(comment.user_id);
-                // TODO あとでなおす
-                // notification.send(comment.text, { body: commentUser.nickname, icon: commentUser.avatar_url });
+                notice.noticeSend(comment.text, { body: commentUser.nickname, icon: commentUser.avatar_url });
             }
         }
 

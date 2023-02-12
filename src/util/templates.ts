@@ -4,9 +4,6 @@ export const extensionMenu = parse(`
     <div class="rd_toggle" id="rd_toggle">
         <i class="material-icons">info</i>
     </div>
-    <div class="ntc_toggle" id="ntc_toggle">
-        <i class="material-icons"></i>
-    </div>
 `);
 
 export const musicData = parse(`

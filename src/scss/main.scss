@@ -1,7 +1,7 @@
 $commentResize: .3s;
 $commentFade: .2s;
 
-#rd_toggle, #ntc_toggle {
+#rd_toggle {
     grid-row: 2/3;
     grid-column: 3/4;
     width: 30px;
@@ -11,10 +11,6 @@ $commentFade: .2s;
 
 #rd_toggle {
     margin-left: calc(100% - 70px);
-}
-
-#ntc_toggle {
-    margin-left: calc(100% - 100px);
 }
 
 #now_playing_info .inner {
