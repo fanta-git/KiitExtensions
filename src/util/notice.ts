@@ -1,7 +1,7 @@
 const notices = new Set<Notification>();
 
 async function noticeSend(text: string, options?: NotificationOptions) {
-    if (!document.hasFocus()) return false;
+    if (document.hasFocus()) return false;
     if (Notification.permission === 'default') await Notification.requestPermission();
     if (Notification.permission === 'denied') return false;
     const item = new Notification(text, options);

@@ -62,11 +62,7 @@ function setMenuDom() {
 }
 
 function setMusicDetail(musicInfo: NicoEmbedProp) {
-    if (options.notification_music) notice.noticeSend(musicInfo.title, {
-        icon: musicInfo.thumbnailUrl,
-        tag: 'musicInfo',
-        requireInteraction: true
-    });
+    if (options.notification_music) notice.noticeSend(musicInfo.title, { icon: musicInfo.thumbnailUrl });
 
     document.querySelector('div#viewCounter')!.textContent = musicInfo.viewCounter.toLocaleString();
     document.querySelector('div#mylistCounter')!.textContent = musicInfo.mylistCounter.toLocaleString();
