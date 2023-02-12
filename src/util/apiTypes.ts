@@ -84,7 +84,7 @@ export type ReturnCafeSong = {
     display_playlist_link: boolean
 };
 
-export type RetrunCafeSongWithComment = Omit<ReturnCafeSong, 'reasons'> & {
+export type ReturnCafeSongWithComment = Omit<ReturnCafeSong, 'reasons'> & {
     reasons: SelectReasonsWithComment[]
 };
 
@@ -157,7 +157,7 @@ export type FuncAPI = {
     (url: '/api/songs/by_video_ids', queryParam: { video_ids: string[] }): Promise<ReturnSongData[]>
     (url: '/api/cafe/rotate_users', queryParam: { ids: number[] }): Promise<Record<string, number[]>>
     (url: '/api/cafe/timetable', queryParam: { limit: number, with_comment?: false }): Promise<ReturnCafeSong[]>
-    (url: '/api/cafe/timetable', queryParam: { limit: number, with_comment: true }): Promise<RetrunCafeSongWithComment[]>
+    (url: '/api/cafe/timetable', queryParam: { limit: number, with_comment: true }): Promise<ReturnCafeSongWithComment[]>
     (url: '/api/artist/id', queryParam: { artist_id: number | string }): Promise<ArtistData> | null
     (url: '/api/playlists/contents/detail', queryParam: { list_id: string }): Promise<PlaylistContents | FailedPlaylistContents>
     (url: '/api/cafe/played', queryParam: { video_ids: string[] }): Promise<PlayedSongs[]>
