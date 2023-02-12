@@ -81,3 +81,7 @@ export type NicoEmbedProp = {
     izumoSite: string,
     noIncrementViewCountAtFirst: boolean
 };
+
+export interface MouseEventElement<T extends HTMLElement> extends MouseEvent  {
+    target: T
+}

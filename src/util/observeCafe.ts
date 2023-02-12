@@ -4,7 +4,8 @@ import fetchCafeAPI from "./fetchCafeAPI";
 import notice from "./notice";
 import options from "./options";
 import * as templates from './templates';
-import { CommentDataType } from "./types";
+import { CommentDataType, MouseEventElement } from "./types";
+import type {} from 'typed-query-selector';
 
 const userData = new Map<number, User>();
 const emptyData = {
@@ -159,29 +160,31 @@ function createTimetableItem(musicData: ReturnCafeSongWithComment, rotateData: n
         commentList.classList.remove('empty');
     }
 
-    newNode.querySelector('.music_info .artist span')?.addEventListener('click', async e => {
-        // TODO: 配置時にaタグとしてつけておくように
-        const artist = await fetchCafeAPI('/api/artist/id', { artist_id: (e as any).currentTarget!.parentNode.dataset.artist_id });
-        window.open(`https://kiite.jp/creator/${artist?.creator_id}`, '_blank');
-    });
+    newNode.querySelector('.music_info .artist span')?.addEventListener('click', {
+        handleEvent: async (e: MouseEventElement<HTMLSpanElement>) => {
+            const artist = await fetchCafeAPI('/api/artist/id', { artist_id: e.target.parentElement!.dataset.artist_id! });
+            window.open(`https://kiite.jp/creator/${artist?.creator_id}`, '_blank');
+        }
+    }, false);
 
     if (options.comment_fold) {
-        newNode.querySelector('div.comment_tail')?.addEventListener('click', e => {
-            // TODO: 適切な型付けを
-            const timetableItem = (e.target as any).closest('.timetable_item');
-            if ((e.ctrlKey && !e.metaKey) || (!e.ctrlKey && e.metaKey)) {
-                const elementFolded = timetableItem.querySelector('div.comment_list').classList.contains('folded');
-                document.querySelectorAll('#timetable_list div.comment_list:not(.empty)').forEach(e => {
-                    if (elementFolded) {
-                        e.classList.remove('folded');
-                    } else {
-                        e.classList.add('folded');
-                    }
-                });
-            } else {
-                timetableItem.querySelector('div.comment_list').classList.toggle('folded');
+        newNode.querySelector('div.comment_tail')?.addEventListener('click', {
+            handleEvent: (e: MouseEventElement<HTMLDivElement>) => {
+                const timetableItem = e.target!.closest('div.timetable_item')!;
+                if (e.ctrlKey !== e.metaKey) {
+                    const elementFolded = timetableItem.querySelector('div.comment_list')!.classList.contains('folded');
+                    document.querySelectorAll('#timetable_list div.comment_list:not(.empty)').forEach(e => {
+                        if (elementFolded) {
+                            e.classList.remove('folded');
+                        } else {
+                            e.classList.add('folded');
+                        }
+                    });
+                } else {
+                    timetableItem.querySelector('div.comment_list')!.classList.toggle('folded');
+                }
             }
-        });
+        }, false);
     } else {
         newNode.querySelector('div.comment_list')!.classList.remove('folded');
         newNode.querySelector('div.comment_tail')!.remove();

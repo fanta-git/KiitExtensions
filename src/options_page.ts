@@ -8,9 +8,10 @@ async function main() {
     Object.assign(options, await chromeStorage.get('options'));
     setValue(options);
 
-    document.querySelector('form#options_wrapper')?.addEventListener('submit', event => {
-        event.preventDefault();
-        saveValue().then(window.close);
+    document.querySelector('form#options_wrapper')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await saveValue();
+        window.close();
     });
 
     document.querySelector('button#reset_btn')?.addEventListener('click', () => {
