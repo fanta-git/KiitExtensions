@@ -34,19 +34,18 @@
         "service_worker": "js/background.js"
     },
     "commands": {
-        "test": {
-            "description": "for test",
+        "rotate": {
+            "description": "「回る」ボタンで高まる気持ちを表現！？",
             "global": true,
             "suggested_key": {
-                "default": "Ctrl+Shift+0",
-                "mac": "Command+Shift+0"
+                "default": "Ctrl+Shift+0"
             }
         },
-        "start-stop": {
-            "description": "for test",
+        "sendFav": {
+            "description": "あなたの「好き」がみんなに伝わります",
             "global": true,
             "suggested_key": {
-                "default": "MediaPlayPause"
+                "default": "Ctrl+Shift+1"
             }
         }
     }
