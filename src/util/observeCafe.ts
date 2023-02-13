@@ -4,7 +4,6 @@ import options from "./options";
 import { CommentDataType } from "./types";
 import type {} from 'typed-query-selector';
 import { setTimetable, updateTimetable } from "./timetable";
-import { fetchUserData } from "./userDataCache";
 
 const commentLog: Record<string, CommentDataType[]> = {};
 let endtime: number;
@@ -17,8 +16,7 @@ async function observeCafe() {
         const rotateHistory = await fetchCafeAPI('/api/cafe/rotate_users', { ids: timetableData.map(e => e.id) });
         endtime = new Date(timetableData[0].start_time).getTime() + timetableData[0].msec_duration;
 
-        await fetchUserData(timetableData, commentLog);
-        setTimetable(timetableData, rotateHistory, commentLog);
+        await setTimetable(timetableData, rotateHistory, commentLog);
 
         const selectionId = timetableData[0].id;
         commentLog[selectionId] ??= [];
@@ -28,7 +26,7 @@ async function observeCafe() {
             commentLog[selectionId].push(...newComments);
             chromeStorage.set('commentData', commentLog);
 
-            updateTimetable(newFavs, rotates, newComments);
+            await updateTimetable(newFavs, rotates, newComments);
 
             await new Promise(r => setTimeout(r, options.interval_time));
         }

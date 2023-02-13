@@ -4,7 +4,7 @@ import * as templates from './templates';
 import options from "./options";
 import notice from "./notice";
 import fetchCafeAPI from "./fetchCafeAPI";
-import { userDataCache } from "./userDataCache";
+import { fetchUserData, setUserData, userDataCache } from "./userDataCache";
 
 const emptyData = {
     avatar_url: "https://kiite.jp/img/icon-user.jpg",
@@ -14,7 +14,16 @@ const emptyData = {
     user_name: ""
 };
 
-export function setTimetable(timetableData: ReturnCafeSongWithComment[], rotateHistory: Record<string, number[]>, commentLog: Record<number, CommentDataType[]>) {
+export async function setTimetable(timetableData: ReturnCafeSongWithComment[], rotateHistory: Record<string, number[]>, commentLog: Record<number, CommentDataType[]>) {
+    const existUserData = timetableData
+        .flatMap(v => v.reasons.filter((v): v is ReasonPriorityWithComment => v.hasOwnProperty('user')))
+        .map(v => v.user);
+    setUserData(existUserData);
+
+    const commentedUserIds = Object.values(commentLog).flat().map(v => v.user_id);
+    const topReasonUserIds = timetableData.map(v => v.reasons[0].user_id);
+    await fetchUserData([...commentedUserIds, ...topReasonUserIds]);
+
     const timetable = document.createDocumentFragment();
 
     for (const musicData of timetableData) {
@@ -27,7 +36,7 @@ export function setTimetable(timetableData: ReturnCafeSongWithComment[], rotateH
     document.querySelector('div#timetable_list')!.replaceChildren(timetable);
 }
 
-export function updateTimetable(newFavs: number[], rotates: number[], newComments: CommentDataType[]) {
+export async function updateTimetable(newFavs: number[], rotates: number[], newComments: CommentDataType[]) {
     const qsTimetableFirst = document.querySelector('#timetable_list div.timetable_item:first-child');
     if (qsTimetableFirst === null) return null;
 
@@ -44,6 +53,8 @@ export function updateTimetable(newFavs: number[], rotates: number[], newComment
     }
 
     if (newComments.length) {
+        await fetchUserData(newComments.map(v => v.user_id));
+
         if (options.notification_comment) {
             for (const comment of newComments) {
                 const commentUser = userDataCache.get(comment.user_id) ?? emptyData;

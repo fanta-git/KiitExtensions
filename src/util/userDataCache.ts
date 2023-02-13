@@ -1,24 +1,18 @@
-import { ReasonPriorityWithComment, ReturnCafeSongWithComment, User } from "./apiTypes";
+import { User } from "./apiTypes";
 import fetchCafeAPI from "./fetchCafeAPI";
-import { CommentDataType } from "./types";
 
 
 export const userDataCache = new Map<number, User>();
 
-export async function fetchUserData(timetableData: ReturnCafeSongWithComment[], commentLog: Record<string, CommentDataType[]>) {
-    const existUserData = timetableData
-        .flatMap(v => v.reasons.filter((v): v is ReasonPriorityWithComment => v.hasOwnProperty('user')))
-        .map(v => v.user);
-    for (const user of existUserData) userDataCache.set(user.user_id, user);
+export async function fetchUserData(userIds: number[]) {
+    const omited = userIds
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .filter(v => !userDataCache.has(v));
 
-    const newUsers = new Set<number>();
-    const commentedUserIds = Object.values(commentLog).flat().map(v => v.user_id);
-    const topReasonUserIds = timetableData.map(v => v.reasons[0].user_id);
-    for (const userId of [...commentedUserIds, ...topReasonUserIds]) {
-        if (newUsers.has(userId) || userDataCache.has(userId)) continue;
-        newUsers.add(userId);
-    }
-
-    const users = await fetchCafeAPI('/api/kiite_users', { user_ids: [...newUsers] });
+    const users = await fetchCafeAPI('/api/kiite_users', { user_ids: omited });
     for (const user of users) userDataCache.set(user.user_id, user);
+}
+
+export async function setUserData(userData: User[]) {
+    for (const user of userData) userDataCache.set(user.user_id, user);
 }
