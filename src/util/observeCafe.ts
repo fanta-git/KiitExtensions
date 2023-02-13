@@ -49,7 +49,7 @@ function getCafeData() {
     const newComments = users.filter(v => v.text && v.text !== lastComments.get(v.user_id));
 
     lastComments.clear();
-    for (const comment of newComments) lastComments.set(comment.user_id, comment.text);
+    for (const comment of users) lastComments.set(comment.user_id, comment.text);
 
     return { newFavs, rotates, newComments };
 }
