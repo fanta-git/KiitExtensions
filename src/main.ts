@@ -7,6 +7,7 @@ import type {} from 'typed-query-selector';
 import observeCafe from './util/observeCafe';
 import notice from './util/notice';
 import { NicoEmbedProp } from './util/types';
+import keybordShortcut from './util/keybordShortcut';
 
 
 async function main() {
@@ -17,11 +18,19 @@ async function main() {
     window.addEventListener('beforeunload', () => notice.noticeClear());
 
     chromeStorage.onChange(changes => {
-        if (changes.musicData !== undefined) {
+        if (changes.musicData?.newValue !== undefined) {
             setMusicDetail(changes.musicData.newValue);
         }
-        if (changes.options !== undefined) {
+        if (changes.options?.newValue !== undefined) {
             location.reload();
+        }
+        if (changes.command?.newValue !== undefined) {
+            chromeStorage.remove('command');
+            const command = changes.command!.newValue;
+            console.log(command);
+            if (!iskey(keybordShortcut, command)) return;
+
+            keybordShortcut[command]();
         }
     });
 
@@ -60,6 +69,10 @@ function setMusicDetail(musicInfo: NicoEmbedProp) {
     document.querySelector('div#mylistCounter')!.textContent = musicInfo.mylistCounter.toLocaleString();
     document.querySelector('div#commentCounter')!.textContent = musicInfo.thread.commentCounter.toLocaleString();
     document.querySelector('div#music_description')!.innerHTML = optimizeDescription(musicInfo.description);
+}
+
+function iskey<T extends Record<string | number | symbol, any>>(obj: T, key: string | number | symbol): key is keyof T {
+    return obj.hasOwnProperty(key);
 }
 
 window.addEventListener('load', main);

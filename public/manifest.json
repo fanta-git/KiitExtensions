@@ -17,7 +17,8 @@
         {
             "matches": ["https://cafe.kiite.jp/pc"],
             "css": ["css/main.css"],
-            "js" : ["js/main.js"]
+            "js" : ["js/main.js"],
+            "run_at":"document_start"
         },
         {
             "matches": ["https://embed.nicovideo.jp/watch/*"],
@@ -28,5 +29,24 @@
     "options_ui": {
         "page": "html/options_page.html",
         "browser_style": false
+    },
+    "background": {
+        "service_worker": "js/background.js"
+    },
+    "commands": {
+        "rotate": {
+            "description": "「回る」ボタンで高まる気持ちを表現！？",
+            "global": true,
+            "suggested_key": {
+                "default": "Ctrl+Shift+0"
+            }
+        },
+        "sendFav": {
+            "description": "あなたの「好き」がみんなに伝わります",
+            "global": true,
+            "suggested_key": {
+                "default": "Ctrl+Shift+1"
+            }
+        }
     }
 }
