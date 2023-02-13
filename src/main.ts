@@ -17,11 +17,15 @@ async function main() {
     window.addEventListener('beforeunload', () => notice.noticeClear());
 
     chromeStorage.onChange(changes => {
-        if (changes.musicData !== undefined) {
+        if (changes.musicData?.newValue !== undefined) {
             setMusicDetail(changes.musicData.newValue);
         }
-        if (changes.options !== undefined) {
+        if (changes.options?.newValue !== undefined) {
             location.reload();
+        }
+        if (changes.command?.newValue !== undefined) {
+            console.log(changes.options!.newValue);
+            chromeStorage.remove('command');
         }
     });
 
