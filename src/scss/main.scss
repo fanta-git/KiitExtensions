@@ -1,16 +1,51 @@
 $commentResize: .3s;
 $commentFade: .2s;
 
-#rd_toggle {
-    grid-row: 2/3;
-    grid-column: 3/4;
-    width: 30px;
-    margin-top: -29px;
-    text-align: right;
+#exmenu {
+    z-index: 11;
+    grid-row: 2/4;
+    grid-column: 3/5;
+    pointer-events: none;
+
+    display: flex;
+    height: 40px;
+    font-size: 1.1em;
+    line-height: 20px;
+    column-gap: 10px;
+    padding: 8px 0px 8px 5px;
+    margin-right: 20px;
+    justify-content: flex-end;
+
+    .exmenu_item {
+        pointer-events: auto;
+        display: flex;
+        height: 100%;
+        align-items: center;
+
+        .material-icons {
+            font-size: 20px;
+            color: #AAA;
+            cursor: pointer;
+        }
+
+        .material-icons:hover {
+            color: #FFF;
+        }
+
+        &.selected .material-icons {
+            color: #FFF;
+        }
+    }
 }
 
-#rd_toggle {
-    margin-left: calc(100% - 70px);
+@each $item in reasons, info {
+    #cafe[data-exmenu="#{$item}"] .exmenu_item.#{$item} .material-icons {
+        color: #FFF;
+    }
+
+    #cafe:not([data-exmenu="#{$item}"]) ##{$item} {
+        display: none;
+    }
 }
 
 #now_playing_info .inner {
@@ -29,11 +64,7 @@ $commentFade: .2s;
     }
 }
 
-#cafe.view_music_data #reasons {
-    display: none;
-}
-
-#cafe #music_data {
+#info {
     display: block;
     z-index: 10;
     grid-row: 2 / 4;
@@ -41,17 +72,13 @@ $commentFade: .2s;
     position: relative;
 }
 
-#cafe:not(.view_music_data) #music_data {
-	display: none;
-}
-
-#music_data .inner {
+#info .inner {
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
     margin: 0px 10px 0px 5px;
 }
 
-#music_data .inner > i {
+#info .inner > i {
     font-size: 20px;
     color: #FFF;
 }
@@ -511,12 +538,12 @@ $commentFade: .2s;
 }
 
 @media screen and (max-width: 900px) {
-    #cafe.view_music_data #music_data {
+    #info {
         grid-row: 4 / 5;
         grid-column: 2 / 3;
     }
 
-    #music_data .inner {
+    #info .inner {
         display: grid;
         grid-template-columns: 120px;
         margin: 5px 10px 0px 0px;

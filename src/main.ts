@@ -12,6 +12,7 @@ import keybordShortcut from './util/keybordShortcut';
 
 async function main() {
     setMenuDom();
+    setEventListener();
     Object.assign(options, await chromeStorage.get('options'));
 
     window.addEventListener('focus', () => notice.noticeClear());
@@ -38,25 +39,27 @@ async function main() {
 }
 
 function setMenuDom() {
-    document.querySelector('#now_playing_info div.source')!.after(templates.extensionMenu);
+    document.querySelector('div#reasons')!.before(templates.extensionMenu);
     document.querySelector('div#reasons')!.after(templates.musicData);
-    document.querySelector('#cafe_menu > ul')!.appendChild(templates.timetableLabel);
     document.querySelector('div#cafe')!.appendChild(templates.timetable);
+    document.querySelector('#cafe_menu > ul')!.appendChild(templates.timetableLabel);
+}
 
+function setEventListener() {
     const qsCafe = document.querySelector('div#cafe')!;
     const qsaMenuLi = document.querySelectorAll('#cafe_menu > ul > li');
-    const qsRdIcon = document.querySelector('#rd_toggle i.material-icons')!;
+    const menuItemViewers = Array.from(qsaMenuLi, v => `view_${v.dataset.val}`);
 
-    document.querySelector('div#rd_toggle')?.addEventListener('click', () => {
-        qsRdIcon.textContent = (qsRdIcon.textContent === 'info')
-            ? 'people'
-            : 'info';
-        qsCafe.classList.toggle('view_music_data');
-    });
+    for(const menuItem of document.querySelectorAll('div.exmenu_item')) {
+        qsCafe.dataset.exmenu ??= menuItem.dataset.val!;
+        menuItem.addEventListener('click', () => {
+            qsCafe.dataset.exmenu = menuItem.dataset.val!;
+        });
+    }
 
     for (const element of qsaMenuLi) {
         document.querySelector(`#cafe_menu > ul > li.${element.dataset.val}`)?.addEventListener('click', () => {
-            qsCafe.classList.remove(...Array.from(qsaMenuLi, v => `view_${v.dataset.val}`));
+            qsCafe.classList.remove(...menuItemViewers);
             qsCafe.classList.add(`view_${element.dataset.val}`);
         });
     }

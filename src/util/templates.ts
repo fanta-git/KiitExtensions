@@ -1,13 +1,18 @@
 const parse = (fragment: string) => new Range().createContextualFragment(fragment);
 
 export const extensionMenu = parse(`
-    <div class="rd_toggle" id="rd_toggle">
-        <i class="material-icons">info</i>
+    <div id="exmenu">
+        <div data-val="reasons" class="exmenu_item reasons">
+            <i class="material-icons">people</i>
+        </div>
+        <div data-val="info" class="exmenu_item info">
+            <i class="material-icons">info</i>
+        </div>
     </div>
 `);
 
 export const musicData = parse(`
-    <div id="music_data">
+    <div id="info">
         <div class="inner">
             <div id="music_detail">
                 <div class="music_detail_items">
