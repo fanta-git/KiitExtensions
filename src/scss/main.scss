@@ -70,17 +70,17 @@ $commentFade: .2s;
     grid-row: 2 / 4;
     grid-column: 3 / 5;
     position: relative;
-}
+    .inner {
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        margin: 0px 10px 0px 5px;
 
-#info .inner {
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    margin: 0px 10px 0px 5px;
-}
+        & > i {
+            font-size: 20px;
+            color: #FFF;
+        }
+    }
 
-#info .inner > i {
-    font-size: 20px;
-    color: #FFF;
 }
 
 #music_detail {
@@ -89,12 +89,13 @@ $commentFade: .2s;
     font-size: 1.1em;
     padding: 8px 0px 8px 5px;
     line-height: 20px;
+
+    .music_detail_items {
+        display: flex;
+        align-items: center;
+    }
 }
 
-.music_detail_items {
-	display: flex;
-	align-items: center;
-}
 
 #music_description {
     height: calc(100% - 40px);
@@ -128,37 +129,21 @@ $commentFade: .2s;
 
 #timetable {
     position: relative;
-    display: none;
+    display: block;
     width: 100%;
     height: 100%;
     z-index: 25;
     padding: 5px 10px 0px 0px;
     grid-row: 6 / 8;
     grid-column: 2 / 5;
+    overflow-x: hidden;
 
-    #cafe.view_timetable & {
-        display: block;
+    #cafe:not(.view_timetable) & {
+        display: none;
     }
 
     .logo_mini {
         display: none;
-        opacity: 0.7;
-        position: absolute;
-        left: 0px;
-        top: 30px;
-        z-index: 40;
-        text-align: center;
-        height: 100px;
-        width: 120px;
-    }
-
-    .logo_mini img {
-        width: 70px;
-    }
-
-    .logo_mini .logo_cafe {
-        margin-top: 5px;
-        font-size: 10px;
     }
 
     .inner {
@@ -242,18 +227,20 @@ $commentFade: .2s;
         justify-content: center;
     }
 
-    .timetable_item .onair {
+    .onair {
+        display: flex;
+        background: red;
+
+    }
+
+    .timetable_item:not(.onair_now) .onair {
         display: none;
     }
 
-    .timetable_item.onair_now .onair {
-        background: red;
-        display: flex;
-    }
-
     .timestamp {
-        background: #666;
         display: flex;
+        background: #666;
+
     }
 
     .timetable_item.onair_now .timestamp {
@@ -277,19 +264,19 @@ $commentFade: .2s;
         .text {
             display: inline-block;
             font-size: 12px;
-        }
 
-        .text a {
-            text-decoration: underline;
-            font-weight: bold;
-        }
+            a {
+                text-decoration: underline;
+                font-weight: bold;
 
-        .text a:hover {
-            text-decoration: none;
-        }
+                &:hover {
+                    text-decoration: none;
+                }
+            }
 
-        .text b {
-            font-weight: bold;
+            b {
+                font-weight: bold;
+            }
         }
 
         .user_name {
@@ -327,12 +314,12 @@ $commentFade: .2s;
 
         span {
             color: #AAA;
-        }
 
-        span:hover {
-            text-decoration: underline;
-            cursor: pointer;
-            color: white;
+            &:hover {
+                text-decoration: underline;
+                cursor: pointer;
+                color: white;
+            }
         }
     }
 
@@ -363,38 +350,36 @@ $commentFade: .2s;
     .new_fav_icon {
         width: 18px;
         height: 18px;
-    }
 
-    .new_fav_icon i {
-        position: absolute;
-        color: #ff33aa;
-    }
+        i {
+            position: absolute;
+            color: #ff33aa;
+            font-size: 18px;
 
-    i.in, i.out {
-        font-size: 18px;
-    }
+            i.in {
+                transform: scale(.5);
+            }
 
-    i.in {
-        transform: scale(.5);
-    }
-
-    i.out {
-        opacity: .5;
+            i.out {
+                opacity: .5;
+            }
+        }
     }
 
     .source {
         grid-area: sour;
         margin: auto;
         z-index: 1;
-    }
 
-    .source .material-icons {
-        font-size: 20px;
-        color: #AAA;
-    }
+        .material-icons {
+            font-size: 20px;
+            color: #AAA;
 
-    .source .material-icons:hover {
-        color: #FFF;
+            &:hover {
+                color: #FFF;
+            }
+        }
+
     }
 
     .comment_list {
@@ -433,6 +418,7 @@ $commentFade: .2s;
             line-height: 1.4em;
             position: relative;
             background: #fffacd;
+            word-break: break-word;
         }
 
         .comment_text.presenter {
@@ -534,6 +520,23 @@ $commentFade: .2s;
 
     #timetable .logo_mini {
         display: block;
+        opacity: 0.7;
+        position: absolute;
+        left: 0px;
+        top: 30px;
+        z-index: 40;
+        text-align: center;
+        height: 100px;
+        width: 120px;
+
+        img {
+            width: 70px;
+        }
+
+        .logo_cafe {
+            margin-top: 5px;
+            font-size: 10px;
+        }
     }
 }
 
