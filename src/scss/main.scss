@@ -541,6 +541,12 @@ $commentFade: .2s;
 }
 
 @media screen and (max-width: 900px) {
+    #exmenu {
+        grid-row: 4 / 5;
+        grid-column: 2 / 7;
+        margin-right: 2.25em;
+    }
+
     #info {
         grid-row: 4 / 5;
         grid-column: 2 / 3;
