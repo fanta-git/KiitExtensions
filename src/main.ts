@@ -40,7 +40,7 @@ async function main() {
 
 function setMenuDom() {
     document.querySelector('div#reasons')!.before(templates.extensionMenu);
-    document.querySelector('div#reasons')!.after(templates.musicData);
+    document.querySelector('div#reasons')!.after(templates.exWindows);
     document.querySelector('div#cafe')!.appendChild(templates.timetable);
     document.querySelector('#cafe_menu > ul')!.appendChild(templates.timetableLabel);
 }

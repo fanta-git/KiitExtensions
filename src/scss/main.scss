@@ -38,7 +38,7 @@ $commentFade: .2s;
     }
 }
 
-@each $item in reasons, info {
+@each $item in reasons, info, lyric {
     #cafe[data-exmenu="#{$item}"] .exmenu_item.#{$item} .material-icons {
         color: #FFF;
     }
@@ -46,42 +46,28 @@ $commentFade: .2s;
     #cafe:not([data-exmenu="#{$item}"]) ##{$item} {
         display: none;
     }
-}
 
-#now_playing_info .inner {
-    .title {
-        padding-right: 90px!important;
-    }
+    @if $item != reasons {
+        ##{$item} {
+            display: block;
+            z-index: 10;
+            grid-row: 2 / 4;
+            grid-column: 3 / 5;
+            position: relative;
+            .inner {
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                margin: 0px 10px 0px 5px;
 
-    i {
-        font-size: 20px;
-        color: #AAA;
-    }
-
-    i:hover {
-        cursor: pointer;
-        color: #FFF;
-    }
-}
-
-#info {
-    display: block;
-    z-index: 10;
-    grid-row: 2 / 4;
-    grid-column: 3 / 5;
-    position: relative;
-    .inner {
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        margin: 0px 10px 0px 5px;
-
-        & > i {
-            font-size: 20px;
-            color: #FFF;
+                & > i {
+                    font-size: 20px;
+                    color: #FFF;
+                }
+            }
         }
     }
-
 }
+
 
 #music_detail {
     display: flex;

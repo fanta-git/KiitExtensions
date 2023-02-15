@@ -8,10 +8,13 @@ export const extensionMenu = parse(`
         <div data-val="info" class="exmenu_item info">
             <i class="material-icons">info</i>
         </div>
+        <div data-val="lyric" class="exmenu_item lyric">
+            <i class="material-icons">lyrics</i>
+        </div>
     </div>
 `);
 
-export const musicData = parse(`
+export const exWindows = parse(`
     <div id="info">
         <div class="inner">
             <div id="music_detail">
@@ -29,9 +32,12 @@ export const musicData = parse(`
                 </div>
             </div>
             <div id="music_description">
-                動画を再生すると説明文や再生数などがここに表示されます<br>
-                再生しても表示されない時は再読み込みしてください
+                動画を再生すると説明文や再生数などがここに表示されます
             </div>
+        </div>
+    </div>
+    <div id="lyric">
+        <div class="inner">
         </div>
     </div>
 `)
