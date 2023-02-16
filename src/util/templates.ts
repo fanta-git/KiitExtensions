@@ -15,9 +15,9 @@ export const extensionMenu = parse(`
 `);
 
 export const exWindows = parse(`
-    <div id="info">
+    <div id="info" class="exwindow">
         <div class="inner">
-            <div id="music_detail">
+            <div class="header">
                 <div class="music_detail_items">
                     <i class="material-icons">play_arrow</i>
                     <div id="viewCounter">39,392</div>
@@ -31,13 +31,19 @@ export const exWindows = parse(`
                     <div id="mylistCounter">804</div>
                 </div>
             </div>
-            <div id="music_description">
+            <div class="contents">
                 動画を再生すると説明文や再生数などがここに表示されます
             </div>
         </div>
     </div>
-    <div id="lyric">
+    <div id="lyric" class="exwindow">
         <div class="inner">
+            <div class="header">
+                歌詞表示
+            </div>
+            <div class="contents">
+                qRxGGDNawFDAoTVEmTPigeHwNRCXHymRZVPGSgkLZCStGZDgTGpEIoVbKCFMkSPZtudslviZPivTooBrcWvIhnBQPEcgJJBEMerimrpoHjlcUjooJbRtEKanNfIhZXUBdqMFLyItPQspNKBXRSFPYoyTsgYRCIzWppRdoOzLeLZROOgjlCAQMsKcLsaUiqLDTSDRWWiOCYxdTHkBGXlfXkVbZQsspstioNuYdYwHKkiTeLifzjJZffbLbE
+            </div>
         </div>
     </div>
 `)

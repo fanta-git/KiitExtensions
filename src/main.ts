@@ -71,7 +71,7 @@ function setMusicDetail(musicInfo: NicoEmbedProp) {
     document.querySelector('div#viewCounter')!.textContent = musicInfo.viewCounter.toLocaleString();
     document.querySelector('div#mylistCounter')!.textContent = musicInfo.mylistCounter.toLocaleString();
     document.querySelector('div#commentCounter')!.textContent = musicInfo.thread.commentCounter.toLocaleString();
-    document.querySelector('div#music_description')!.innerHTML = optimizeDescription(musicInfo.description);
+    document.querySelector('#info div.contents')!.innerHTML = optimizeDescription(musicInfo.description);
 }
 
 function iskey<T extends Record<string | number | symbol, any>>(obj: T, key: string | number | symbol): key is keyof T {

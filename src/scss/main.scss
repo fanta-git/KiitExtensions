@@ -46,64 +46,76 @@ $commentFade: .2s;
     #cafe:not([data-exmenu="#{$item}"]) ##{$item} {
         display: none;
     }
+}
 
-    @if $item != reasons {
-        ##{$item} {
-            display: block;
-            z-index: 10;
-            grid-row: 2 / 4;
-            grid-column: 3 / 5;
-            position: relative;
-            .inner {
-                height: 100%;
-                background: rgba(0, 0, 0, 0.5);
-                margin: 0px 10px 0px 5px;
+.exwindow {
+    display: block;
+    z-index: 10;
+    grid-row: 2 / 4;
+    grid-column: 3 / 5;
+    position: relative;
+    .inner {
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        margin: 0px 10px 0px 5px;
 
-                & > i {
-                    font-size: 20px;
-                    color: #FFF;
-                }
-            }
+        .header {
+            font-size: 1.1em;
+            padding: 10px 0px 10px 15px;
+            height: 40px;
+        }
+
+        .contents {
+            height: calc(100% - 40px);
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
         }
     }
 }
 
-
-#music_detail {
-    display: flex;
-    column-gap: 10px;
-    font-size: 1.1em;
-    padding: 8px 0px 8px 5px;
-    line-height: 20px;
-
-    .music_detail_items {
+#info {
+    .header {
         display: flex;
+        padding-left: 10px;
+        column-gap: 10px;
+
+        .music_detail_items {
+            display: flex;
+            align-items: center;
+        }
+    }
+
+    .contents {
+        overflow-y: scroll;
+        word-wrap: break-word;
+        letter-spacing: 0px;
+
+        a {
+            color: #b6b6b6;
+        }
+
+        i {
+            font-style: italic;
+        }
+
+        b {
+            font-weight: bolder;
+        }
+    }
+}
+
+#lyric {
+    .header {
+        display: flex;
+        column-gap: 10px;
         align-items: center;
     }
-}
 
-
-#music_description {
-    height: calc(100% - 40px);
-    padding: 10px;
-    background: rgba(0,0,0,0.5);
-	overflow-y: scroll;
-    word-wrap: break-word;
-    letter-spacing: 0px;
-
-    a {
-        color: #b6b6b6;
-    }
-
-    i {
-        font-style: italic;
-    }
-
-    b {
-        font-weight: bolder;
+    .contents {
+        overflow-y: scroll;
+        word-wrap: break-word;
     }
 }
-
 
 #cafe.view_timetable #cafe_menu li.timetable {
     margin-right: 0px;
