@@ -8,6 +8,7 @@ import observeCafe from './util/observeCafe';
 import notice from './util/notice';
 import { NicoEmbedProp } from './util/types';
 import keybordShortcut from './util/keybordShortcut';
+import setMusicLyric from './util/setMusicLyric';
 
 
 async function main() {
@@ -21,6 +22,7 @@ async function main() {
     chromeStorage.onChange(changes => {
         if (changes.musicData?.newValue !== undefined) {
             setMusicDetail(changes.musicData.newValue);
+            setMusicLyric(changes.musicData.newValue);
         }
         if (changes.options?.newValue !== undefined) {
             location.reload();
