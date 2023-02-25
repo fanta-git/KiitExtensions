@@ -5,6 +5,7 @@ import options from "./options";
 import notice from "./notice";
 import fetchCafeAPI from "./fetchCafeAPI";
 import { fetchUserData, setUserData, userDataCache } from "./userDataCache";
+import commentItemCreate from "./commentItemCreate";
 
 const emptyData = {
     avatar_url: "https://kiite.jp/img/icon-user.jpg",
@@ -63,7 +64,7 @@ export async function updateTimetable(newFavs: number[], rotates: number[], newC
         }
 
         if (options.comment_log) {
-            qsTimetableFirst.querySelector('div.comment_list')!.appendChild(timetableCommentCreate(newComments));
+            qsTimetableFirst.querySelector('div.comment_list')!.appendChild(commentItemCreate(newComments));
             qsTimetableFirst.querySelector('div.comment_list')!.classList.remove('empty');
         }
     }
@@ -104,7 +105,7 @@ function createTimetableItem(musicData: ReturnCafeSongWithComment, rotateData: n
                     });
                 }
                 const commentList = newNode.querySelector('div.comment_list')!;
-                commentList.appendChild(timetableCommentCreate(reasonCommentData));
+                commentList.appendChild(commentItemCreate(reasonCommentData));
                 commentList.classList.remove('empty');
             }
             break;
@@ -126,7 +127,7 @@ function createTimetableItem(musicData: ReturnCafeSongWithComment, rotateData: n
 
     if (options.comment_log && commentData?.length) {
         const commentList = newNode.querySelector('div.comment_list')!;
-        commentList.appendChild(timetableCommentCreate(commentData));
+        commentList.appendChild(commentItemCreate(commentData));
         commentList.classList.remove('empty');
     }
 
@@ -170,28 +171,6 @@ function createTimetableItem(musicData: ReturnCafeSongWithComment, rotateData: n
         newNode.querySelector('.rotate > span.count')!.textContent = rotateData.length.toString();
     }
     return newNode;
-}
-
-function timetableCommentCreate(dataArr: CommentDataType[]) {
-    const commentList = document.createDocumentFragment();
-    for (const itemData of dataArr) {
-        if (!itemData.text) continue;
-        const newNode = templates.commentItem.cloneNode(true) as Element;
-        const user = userDataCache.get(itemData.user_id) ?? emptyData;
-        newNode.querySelector('div.comment_icon')!.style.backgroundImage = `url("${user.avatar_url}")`;
-        newNode.querySelector('div.comment_text')!.textContent = itemData.text;
-        const classList = newNode.querySelector('div.comment_text')!.classList;
-        switch (itemData.type) {
-            case 'presenter':
-                classList.add('presenter');
-                break;
-            case 'priority':
-                classList.add('reason_comment_text');
-                break;
-        }
-        commentList.appendChild(newNode);
-    }
-    return commentList;
 }
 
 function updateTimecounter(timetable: DocumentFragment | Element) {

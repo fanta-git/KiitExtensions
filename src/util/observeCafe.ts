@@ -4,6 +4,7 @@ import options from "./options";
 import { CommentDataType } from "./types";
 import type {} from 'typed-query-selector';
 import { setTimetable, updateTimetable } from "./timetable";
+import updateCommentWindow from "./commentWindow";
 
 const commentLog: Record<string, CommentDataType[]> = {};
 let endtime: number;
@@ -27,6 +28,7 @@ async function observeCafe() {
             chromeStorage.set('commentData', commentLog);
 
             await updateTimetable(newFavs, rotates, newComments);
+            updateCommentWindow(newComments);
 
             await new Promise(r => setTimeout(r, options.interval_time));
         }
@@ -39,10 +41,10 @@ function getCafeData() {
 
     const newFavs = qsUsers.filter(v => v.classList.contains('new_fav')).map(v => Number(v.dataset.user_id!));
     const rotates = qsUsers.filter(v => v.classList.contains('gesture_rotate')).map(v => Number(v.dataset.user_id!));
-    const users = qsUsers.map(v => ({
+    const users: CommentDataType[] = qsUsers.map(v => ({
             user_id: Number(v.dataset.user_id),
             text: v.querySelector('div.comment')?.textContent ?? "",
-            type: v.classList.contains('presenter') ? ('presenter' as const) : ('user' as const)
+            type: v.classList.contains('presenter') ? 'presenter' : 'user'
         }));
     const newComments = users.filter(v => v.text && v.text !== lastComments.get(v.user_id));
 

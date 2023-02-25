@@ -11,6 +11,9 @@ export const extensionMenu = parse(`
         <div data-val="lyric" class="exmenu_item lyric">
             <i class="material-icons">lyrics</i>
         </div>
+        <div data-val="comments" class="exmenu_item comments">
+            <i class="material-icons">forum</i>
+        </div>
     </div>
 `);
 
@@ -44,6 +47,14 @@ export const exWindows = parse(`
             <div class="contents">
                 qRxGGDNawFDAoTVEmTPigeHwNRCXHymRZVPGSgkLZCStGZDgTGpEIoVbKCFMkSPZtudslviZPivTooBrcWvIhnBQPEcgJJBEMerimrpoHjlcUjooJbRtEKanNfIhZXUBdqMFLyItPQspNKBXRSFPYoyTsgYRCIzWppRdoOzLeLZROOgjlCAQMsKcLsaUiqLDTSDRWWiOCYxdTHkBGXlfXkVbZQsspstioNuYdYwHKkiTeLifzjJZffbLbE
             </div>
+        </div>
+    </div>
+    <div id="comments" class="exwindow">
+        <div class="inner">
+            <div class="header">
+                コメント履歴
+            </div>
+            <div class="contents"></div>
         </div>
     </div>
 `)
