@@ -6,7 +6,7 @@ export const userDataCache = new Map<number, User>();
 export async function fetchUserData(userIds: number[]) {
     const userIdsSet = new Set(userIds);
     userDataCache.forEach((_, id) => userIdsSet.delete(id));
-    if (userIdsSet.size) return;
+    if (userIdsSet.size === 0) return;
 
     const users = await fetchCafeAPI('/api/kiite_users', { user_ids: [...userIdsSet] });
     for (const user of users) userDataCache.set(user.user_id, user);
