@@ -109,6 +109,8 @@ $commentFade: .2s;
         margin: 0px 10px 0px 5px;
 
         .header {
+            display: flex;
+            align-items: center;
             font-size: 1.1em;
             padding: 10px 0px 10px 15px;
             height: 40px;
@@ -127,7 +129,6 @@ $commentFade: .2s;
 
 #info {
     .header {
-        display: flex;
         padding-left: 10px;
         column-gap: 10px;
 
@@ -149,14 +150,6 @@ $commentFade: .2s;
         b {
             font-weight: bolder;
         }
-    }
-}
-
-#lyric {
-    .header {
-        display: flex;
-        column-gap: 10px;
-        align-items: center;
     }
 }
 
