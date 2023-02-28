@@ -33,6 +33,12 @@
     "background": {
         "service_worker": "js/background.js"
     },
+    "web_accessible_resources": [
+        {
+            "resources": ["js/embed.js"],
+            "matches": ["https://cafe.kiite.jp/*"]
+        }
+    ],
     "commands": {
         "rotate": {
             "description": "「回る」ボタンで高まる気持ちを表現！？",

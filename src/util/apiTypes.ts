@@ -7,6 +7,13 @@ export type User = {
     avatar_url: string
 }
 
+export type CafeUser = User & {
+    user_va: {
+        v: number,
+        a: number
+    }
+}
+
 export type ArtistData = {
     artist_id: number,
     creator_id: string,
@@ -163,4 +170,5 @@ export type FuncAPI = {
     (url: '/api/cafe/played', queryParam: { video_ids: string[] }): Promise<PlayedSongs[]>
     (url: '/api/cafe/user_comments', queryParam?: {}): Promise<CommentData[]>
     (url: '/api/kiite_users', queryParam: { user_ids: number[] }): Promise<User[]>
+    (url: '/api/cafe/users', queryParam: { limit: number | "browser" | "mobile" | "pc" }): Promise<CafeUser[]>
 };
