@@ -19,11 +19,6 @@
             "css": ["css/main.css"],
             "js" : ["js/main.js"],
             "run_at":"document_start"
-        },
-        {
-            "matches": ["https://embed.nicovideo.jp/watch/*"],
-            "js" : ["js/iframe.js"],
-            "all_frames": true
         }
     ],
     "options_ui": {

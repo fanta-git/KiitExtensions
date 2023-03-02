@@ -18,9 +18,6 @@ async function main() {
     window.addEventListener('beforeunload', () => notice.noticeClear());
 
     chromeStorage.onChange(changes => {
-        if (changes.musicData?.newValue !== undefined) {
-            setMusicDetail(changes.musicData.newValue);
-        }
         if (changes.options?.newValue !== undefined) {
             location.reload();
         }
@@ -60,15 +57,6 @@ function setMenuDom() {
             qsCafe.classList.add(`view_${element.dataset.val}`);
         });
     }
-}
-
-function setMusicDetail(musicInfo: NicoEmbedProp) {
-    if (options.notification_music) notice.noticeSend(musicInfo.title, { icon: musicInfo.thumbnailUrl });
-
-    document.querySelector('div#viewCounter')!.textContent = musicInfo.viewCounter.toLocaleString();
-    document.querySelector('div#mylistCounter')!.textContent = musicInfo.mylistCounter.toLocaleString();
-    document.querySelector('div#commentCounter')!.textContent = musicInfo.thread.commentCounter.toLocaleString();
-    document.querySelector('div#music_description')!.innerHTML = optimizeDescription(musicInfo.description);
 }
 
 function iskey<T extends Record<string | number | symbol, any>>(obj: T, key: string | number | symbol): key is keyof T {

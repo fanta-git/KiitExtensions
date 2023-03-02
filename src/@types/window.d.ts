@@ -1,4 +1,5 @@
 import { CommentData, ReturnCafeSongWithComment, SelectReasonsWithComment, CafeUser } from "../util/apiTypes";
+import { NowPlayingPlayer } from "../util/types";
 
 declare global {
     interface Window {
@@ -11,7 +12,8 @@ declare global {
         cafe_music: {
             reason: { reasons: SelectReasonsWithComment[] },
             now_playing: ReturnCafeSongWithComment,
-            next_song: ReturnCafeSongWithComment
+            next_song: ReturnCafeSongWithComment,
+            now_playing_player: NowPlayingPlayer
         }
     }
 }

@@ -82,6 +82,42 @@ export type NicoEmbedProp = {
     noIncrementViewCountAtFirst: boolean
 };
 
+export type NowPlayingPlayer = {
+    video_id: string
+    start_time: string
+    dom_id: string
+    status: string
+    ready: boolean
+    seeking: boolean
+    pause_trap: boolean
+    api: {
+        playerId: string
+        watchId: string
+        _playerStatus: number
+        _seekStatus: number
+        url: string
+        _videoInfo: ApiVideoInfo
+    }
+    nc_player_status: string
+    msec_playtime: number
+    good_seekable: boolean
+    timer_timeout: number
+    timer_count_playtime: number
+};
+
+export type ApiVideoInfo = {
+    watchId: string;
+    videoId: string;
+    title: string;
+    description: string;
+    thumbnailUrl: string;
+    postedAt: string;
+    lengthInSeconds: number;
+    viewCount: number;
+    mylistCount: number;
+    commentCount: number;
+};
+
 export interface MouseEventElement<T extends HTMLElement> extends MouseEvent  {
     target: T
 }
