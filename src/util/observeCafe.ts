@@ -4,6 +4,18 @@ import options from "./options";
 import { CommentDataType } from "./types";
 import type {} from 'typed-query-selector';
 import { setTimetable, updateTimetable } from "./timetable";
+import notice from "./notice";
+import { fetchUserData, userDataCache } from "./userDataCache";
+
+const emptyData = {
+    avatar_url: "https://kiite.jp/img/icon-user.jpg",
+    id: null,
+    nickname: "CafeUser",
+    user_id: 0,
+    user_name: ""
+};
+
+const dammyFunc = () => {};
 
 const commentLog: Record<string, CommentDataType[]> = {};
 let endtime: number;
@@ -26,7 +38,19 @@ async function observeCafe() {
             commentLog[selectionId].push(...newComments);
             chromeStorage.set('commentData', commentLog);
 
-            await updateTimetable(newFavs, rotates, newComments);
+            await fetchUserData(newComments.map(v => v.user_id));
+            if (options.original_timetable) {
+                // @ts-ignore
+                if (Object.hasOwn(window, 'cafe_timetable') && window.cafe_timetable.update !== dammyFunc) window.cafe_timetable.update = dammyFunc;
+                await updateTimetable(newFavs, rotates, newComments);
+            }
+
+            if (options.notification_comment) {
+                for (const comment of newComments) {
+                    const commentUser = userDataCache.get(comment.user_id) ?? emptyData;
+                    notice.noticeSend(comment.text, { body: commentUser.nickname, icon: commentUser.avatar_url });
+                }
+            }
 
             await new Promise(r => setTimeout(r, options.interval_time));
         }

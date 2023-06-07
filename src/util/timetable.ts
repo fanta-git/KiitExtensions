@@ -1,9 +1,8 @@
 import { ReasonPriorityWithComment, ReturnCafeSongWithComment } from "./apiTypes";
-import { CommentDataType, MouseEventElement } from "./types";
-import * as templates from './templates';
-import options from "./options";
-import notice from "./notice";
 import fetchCafeAPI from "./fetchCafeAPI";
+import options from "./options";
+import * as templates from './templates';
+import { CommentDataType, MouseEventElement } from "./types";
 import { fetchUserData, setUserData, userDataCache } from "./userDataCache";
 
 const emptyData = {
@@ -54,13 +53,6 @@ export async function updateTimetable(newFavs: number[], rotates: number[], newC
 
     if (newComments.length) {
         await fetchUserData(newComments.map(v => v.user_id));
-
-        if (options.notification_comment) {
-            for (const comment of newComments) {
-                const commentUser = userDataCache.get(comment.user_id) ?? emptyData;
-                notice.noticeSend(comment.text, { body: commentUser.nickname, icon: commentUser.avatar_url });
-            }
-        }
 
         if (options.comment_log) {
             qsTimetableFirst.querySelector('div.comment_list')!.appendChild(timetableCommentCreate(newComments));
