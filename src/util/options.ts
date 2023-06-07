@@ -6,6 +6,7 @@ const options: Options = {
     comment_log: true,
     notification_music: true,
     notification_comment: true,
+    original_timetable: false,
     timetable_max: 100,
     wait_time: 3000,
     interval_time: 1000,

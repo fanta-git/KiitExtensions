@@ -11,8 +11,8 @@ import keybordShortcut from './util/keybordShortcut';
 
 
 async function main() {
-    setMenuDom();
     Object.assign(options, await chromeStorage.get('options'));
+    setMenuDom();
 
     window.addEventListener('focus', () => notice.noticeClear());
     window.addEventListener('beforeunload', () => notice.noticeClear());
@@ -34,17 +34,18 @@ async function main() {
         }
     });
 
-    observeCafe();
+    if (options.original_timetable) observeCafe();
 }
 
 function setMenuDom() {
     document.querySelector('#now_playing_info div.source')!.after(templates.extensionMenu);
     document.querySelector('div#reasons')!.after(templates.musicData);
-    document.querySelector('#cafe_menu > ul')!.appendChild(templates.timetableLabel);
-    document.querySelector('div#cafe')!.appendChild(templates.timetable);
+    if (options.original_timetable) {
+        document.querySelector('div#cafe_timetable')?.remove();
+        document.querySelector('div#cafe')!.appendChild(templates.timetable);
+    }
 
     const qsCafe = document.querySelector('div#cafe')!;
-    const qsaMenuLi = document.querySelectorAll('#cafe_menu > ul > li');
     const qsRdIcon = document.querySelector('#rd_toggle i.material-icons')!;
 
     document.querySelector('div#rd_toggle')?.addEventListener('click', () => {
@@ -53,13 +54,6 @@ function setMenuDom() {
             : 'info';
         qsCafe.classList.toggle('view_music_data');
     });
-
-    for (const element of qsaMenuLi) {
-        document.querySelector(`#cafe_menu > ul > li.${element.dataset.val}`)?.addEventListener('click', () => {
-            qsCafe.classList.remove(...Array.from(qsaMenuLi, v => `view_${v.dataset.val}`));
-            qsCafe.classList.add(`view_${element.dataset.val}`);
-        });
-    }
 }
 
 function setMusicDetail(musicInfo: NicoEmbedProp) {
