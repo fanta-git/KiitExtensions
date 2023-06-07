@@ -4,6 +4,7 @@ export type Options = {
     comment_log: boolean;
     notification_music: boolean;
     notification_comment: boolean;
+    original_timetable: boolean;
     timetable_max: number;
     wait_time: number;
     interval_time: number;
